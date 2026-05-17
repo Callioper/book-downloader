@@ -1494,84 +1494,6 @@ async def _download_via_aa_and_stacks(
         return None
 
 
-async def _download_via_libgen(
-    task_id: str, report: Dict[str, Any], config: Dict[str, Any],
-    title: str, isbn: str, authors: List[str], proxy: str,
-) -> Optional[str]:
-    """LibGen 兜底下载（所有其他方式失败后的最后选择）"""
-    task_store.add_log(task_id, "LibGen: trying as last resort...")
-    await _emit_progress(task_id, "download_pages", 80, "LibGen: 搜索中...", "")
-    try:
-        import libgen_api_enhanced as lg
-        from libgen_api_enhanced import LibgenSearch
-        searcher = LibgenSearch()
-    except ImportError:
-        task_store.add_log(task_id, "LibGen: libgen-api-enhanced not installed")
-        return None
-
-    tmp_dir = report.get("tmp_dir", "")
-    if not tmp_dir:
-        return None
-
-    try:
-        filters = {}
-        search_term = ""
-        try:
-            if isbn:
-                search_term = isbn
-                filters["search_in"] = "identifier"
-            elif title:
-                search_term = title
-                if authors:
-                    search_term = f"{title} {authors[0]}"
-        except TypeError:
-            pass
-
-        if not search_term:
-            return None
-
-        results = searcher.search(search_term, search_type="title")
-        if not results or not isinstance(results, list):
-            task_store.add_log(task_id, "LibGen: no results found")
-            return None
-
-        task_store.add_log(task_id, f"LibGen: found {len(results)} results")
-        await _emit_progress(task_id, "download_pages", 85, f"LibGen: 找到 {len(results)} 个结果，下载中...", "")
-        for item in results[:5]:
-            try:
-                md5 = item.get("md5", item.get("Mirror_MD5", ""))
-                if md5:
-                    dl_urls = item.get("mirrors", item.get("Mirrors", []))
-                    if not dl_urls:
-                        dl_urls = [item.get("Mirror_1", ""), item.get("Mirror_2", "")]
-                    for dl_url in dl_urls:
-                        if not dl_url or not dl_url.startswith("http"):
-                            continue
-                        try:
-                            import requests as _req
-                            hdrs = {"User-Agent": "Mozilla/5.0"}
-                            kwargs = {"timeout": 60, "headers": hdrs, "verify": False}
-                            if proxy:
-                                kwargs["proxies"] = {"http": proxy, "https": proxy}
-                            resp = _req.get(dl_url, **kwargs)
-                            if resp.status_code == 200 and len(resp.content) > 1024:
-                                ext = item.get("extension", "pdf")
-                                filepath = os.path.join(tmp_dir, f"{md5}.{ext}")
-                                with open(filepath, "wb") as f:
-                                    f.write(resp.content)
-                                task_store.add_log(task_id, f"LibGen: downloaded {md5}.{ext} ({len(resp.content)/1024:.0f} KB)")
-                                return filepath
-                        except Exception:
-                            continue
-            except Exception:
-                continue
-
-        task_store.add_log(task_id, "LibGen: all download attempts failed")
-    except Exception as e:
-        task_store.add_log(task_id, f"LibGen: error: {str(e)[:100]}")
-    return None
-
-
 async def _wait_for_user_confirmation(
     task_id: str,
     report: Dict[str, Any],
@@ -1679,7 +1601,7 @@ async def _wait_for_step_confirmation(
 async def _step_download_pages(task_id: str, task: Dict[str, Any], config: Dict[str, Any], report: Dict[str, Any]) -> Dict[str, Any]:
     """
     Step 3/7: Download book PDF — 多级降级策略
-    本地检索 → Anna's Archive(stacks优先→直接兜底) → Z-Library(三层检索) → LibGen兜底
+    本地检索 → Anna's Archive(stacks优先→直接兜底) → Z-Library(三层检索)
     """
     task_store.add_log(task_id, "Step 3/7: Downloading book PDF...")
     await _emit(task_id, "step_progress", {"step": "download_pages", "progress": 0})
@@ -1900,25 +1822,12 @@ async def _step_download_pages(task_id: str, task: Dict[str, Any], config: Dict[
             else:
                 task_store.add_log(task_id, "ZL: no credentials configured, skipping")
 
-    # ── 路径C：LibGen 兜底（仅本地检索时允许降级）──
-    if not downloaded and source not in ("zlibrary", "annas_archive") and config.get("libgen_enabled", True):
-        task_store.add_log(task_id, "=== Path C: LibGen (last resort) ===")
-        await _emit(task_id, "step_progress", {"step": "download_pages", "progress": 80})
-
-        libgen_path = await _download_via_libgen(
-            task_id, report, config, title, isbn, authors, proxy,
-        )
-        if libgen_path:
-            downloaded = True
-            download_source = "libgen"
-            report["download_path"] = libgen_path
-
     # ── 结果 ──
     if downloaded:
         report["download_source"] = download_source
         task_store.add_log(task_id, f"Download complete via {download_source}: {os.path.basename(report['download_path'])}")
     else:
-        task_store.add_log(task_id, "All download paths (AA/stacks → ZL → LibGen) exhausted — download failed")
+        task_store.add_log(task_id, "All download paths (AA/stacks → ZL) exhausted — download failed")
         report["download_note"] = "download failed"
 
     await _emit(task_id, "step_progress", {"step": "download_pages", "progress": 100})

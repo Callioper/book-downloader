@@ -74,7 +74,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "stacks_username": "",
     "stacks_password": "",
     "stacks_timeout": 180,
-    "libgen_enabled": True,
     "pdf_compress": False,
     "pdf_compress_half": True,
     "ai_vision_enabled": True,

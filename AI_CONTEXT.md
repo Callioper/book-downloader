@@ -37,7 +37,7 @@
 2. 无本地结果 → _search_annas_archive() / _search_zlib() 在线回退
 3. 创建任务 → task_store.py 持久化
 4. 执行任务 → pipeline.py 7 步处理
-   - Step 3 多级下载降级：AA搜索→MD5→stacks→AA直连 → ZL三层检索 → LibGen
+   - Step 3 多级下载降级：AA搜索→MD5→stacks→AA直连 → ZL三层检索
 5. 实时更新 → ws_manager.py WebSocket 广播
 
 ## 技术约定

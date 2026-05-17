@@ -204,7 +204,7 @@ def detect_database_paths(timeout: float = 30.0) -> List[Dict[str, Any]]:
     # === Common directory names ===
     known_names = [
         "ebook-pdf-downloader", "book-downloader", "EbookDatabase", "EBook", "ebook", "ebooks",
-        "books", "book", "LibGen", "libgen", "pdf", "PDF", "data", "db", "database",
+        "books", "book", "pdf", "PDF", "data", "db", "database",
         "instance", "ebook_database", "eBook Database", "ebook_db", "DB",
         "calibre", "Calibre", "Calibre 书库",
     ]

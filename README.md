@@ -51,7 +51,7 @@
 本地 SQLite 双库并行搜索，Anna's Archive title/ISBN 匹配，Z-Library eAPI 三层检索（ISBN 精确 → 书名+作者 → 书名），自动 ISBN + SS 码去重
 
 **📥 智能下载**  
-Stacks 队列管理 Anna's Archive 下载，FlareSolverr 自动绕过 Cloudflare/DDoS-Guard，Z-Library 邮箱登录直达下载链接，LibGen torrent hash 回退
+Stacks 队列管理 Anna's Archive 下载，FlareSolverr 自动绕过 Cloudflare/DDoS-Guard，Z-Library 邮箱登录直达下载链接
 
 **⚙️ OCR 三引擎**  
 PaddleOCR（PP-OCRv5, 中文主力 ~24min/217 页）、Tesseract 默认引擎、LLM OCR（视觉大模型 dense-mode always，逐框独立识别，支持 6 种已验证模型，异步暂停/恢复）
@@ -104,7 +104,7 @@ graph TD
 
     D --> D1[Anna's Archive<br/>Stacks + FlareSolverr]
     D --> D2[Z-Library eAPI]
-    D --> D3[LibGen 回退]
+    D --> D3[直接下载回退]
 
     E --> E1[PaddleOCR<br/>PP-OCRv5 中文主力]
     E --> E2[Tesseract OCR<br/>默认引擎]
@@ -122,7 +122,7 @@ graph TD
 |:----:|------|
 | **1. 检索** | 输入书名/作者/ISBN → 本地 SQLite 双库并行搜索 → 无结果则自动回退 Anna's Archive + Z-Library |
 | **2. 获取 ISBN** | NLC 元数据爬虫 + 豆瓣 search by title → 补全 ISBN/作者/出版社/年份 |
-| **3. 下载 PDF** | Stacks 队列下载（优先） → Z-Library eAPI → LibGen 兜底，FlareSolverr 自动绕过 Cloudflare |
+| **3. 下载 PDF** | Stacks 队列下载（优先） → Z-Library eAPI，FlareSolverr 自动绕过 Cloudflare |
 | **4. 转换** | 下载的页面/压缩包自动封装为 PDF |
 | **5. OCR 识别** | 弹出确认对话框 → 选引擎（PaddleOCR / Tesseract / LLM OCR）→ LLM OCR 调用 `local-llm-pdf-ocr` CLI → 可选 BW 压缩 → 保留未压缩原稿 |
 | **6. 目录处理** | 智能目录窗口 → 选择目录页范围 → AI Vision 提取 → 偏移量对齐确认 → 自动注入 PDF |
@@ -257,7 +257,7 @@ B）源码版：克隆仓库，手动搭建所有依赖
   - 设置页填入端点（如 `http://127.0.0.1:1234`）和模型名。推荐 `jamepeng2023/paddleocr-vl-1.5`（最快）或 `qwen3-vl-4b-instruct`（综合推荐）
   - 可选开启"PDF 黑白二值化压缩"缩小文件体积 80%+
 - **AI Vision TOC（智能目录提取）**：需 OpenAI/Anthropic 兼容 API（本地 LM Studio/Ollama 或云端均可）。设置页填入端点、模型、API Key
-- **aria2c**（LibGen BT 下载引擎）：便携版 exe 已内置；源码版从 https://github.com/aria2/aria2/releases 下载放入 PATH
+- **aria2c**（BT 下载引擎）：便携版 exe 已内置；源码版从 https://github.com/aria2/aria2/releases 下载放入 PATH
 
 最后：打开设置页（右上角 ⚙️），检查并补全关键配置：
 - 数据库路径（如有 EbookDatabase）
