@@ -65,9 +65,6 @@ PaddleOCR（PP-OCRv5, 中文主力 ~24min/217 页）、Tesseract 默认引擎、
 **🔒 100% 本地优先**  
 所有核心功能无需云 API，LLM OCR 可选配置本地/远程端点，数据完全私有
 
-    </td>
-    <td width="50%">
-
 **🎯 OCR 可选确认**  
 管道执行到 OCR/目录步骤时弹出确认对话框，显示当前引擎和配置，用户可选择跳过
 
@@ -85,10 +82,6 @@ React 18 + TypeScript + Tailwind CSS，WebSocket 实时进度更新，OCR 阶段
 
 **🖥️ OCR 实时进度**  
 LLM OCR 分阶段进度显示（PDF 光栅化 → 版面检测 → 逐框识别 → 嵌入文字层），逐页进度 (`36/217 页`)，Surya 批处理大小可调
-
-    </td>
-  </tr>
-</table>
 
 ---
 
