@@ -43,14 +43,6 @@ FLARE_MIRROR_URLS = [
     "https://github.moeyy.xyz/https://github.com/FlareSolverr/FlareSolverr/releases/download/v3.4.6/flaresolverr_windows_x64.zip",
 ]
 
-_flare_install_state: Dict[str, Any] = {
-    "downloading": False,
-    "progress": 0.0,
-    "status": "idle",
-    "error": None,
-    "path": None,
-}
-
 _flare_dl_state: Dict[str, Any] = {
     "downloaded": 0,
     "total": 0,
@@ -61,12 +53,6 @@ _flare_dl_state: Dict[str, Any] = {
 }
 # Persistent install path, survives _flare_dl_state resets
 _flare_last_install_path: str = ""
-
-
-def _flare_report_progress(block_count, block_size, total_size):
-    global _flare_dl_state
-    _flare_dl_state["downloaded"] = min(block_count * block_size, total_size)
-    _flare_dl_state["total"] = total_size
 
 
 class ProxyRequest(BaseModel):
