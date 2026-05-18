@@ -1262,21 +1262,20 @@ def _auto_install_python311() -> str:
     import tempfile
     _py311_url = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
     _install_dir = r"C:\Python311"
-    if os.path.exists(os.path.join(_install_dir, "python.exe")):
-        from platform_utils import find_python_executable
-        return find_python_executable("3.11") or ""
+    _py_exe = os.path.join(_install_dir, "python.exe")
+    if os.path.exists(_py_exe):
+        return _py_exe
     try:
         _tmp = os.path.join(tempfile.gettempdir(), "python-3.11.9-amd64.exe")
         if not os.path.exists(_tmp):
             urllib.request.urlretrieve(_py311_url, _tmp)
         subprocess.run(
             [_tmp, "/quiet", "InstallAllUsers=0", "Include_test=0",
-             f"TargetDir={_install_dir}"],
+             f"TargetDir={_install_dir}", "PrependPath=0"],
             timeout=300, check=False,
         )
-        if os.path.exists(os.path.join(_install_dir, "python.exe")):
-            from platform_utils import find_python_executable
-            return find_python_executable("3.11") or ""
+        if os.path.exists(_py_exe):
+            return _py_exe
     except Exception:
         pass
     return ""
