@@ -118,7 +118,7 @@ async def _run_ocrmypdf_with_progress(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
-        env={**{"PYTHONUNBUFFERED": "1"}, **{k: v for k, v in (env or os.environ).items() if v is not None}} if env else {"PYTHONUNBUFFERED": "1", **os.environ},
+        env={**{"PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}, **{k: v for k, v in (env or os.environ).items() if v is not None}} if env else {"PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8", **os.environ},
     )
     _start = time.time()
     _cur = 0
@@ -225,6 +225,21 @@ async def _run_ocrmypdf_with_progress(
                 "To redownload, please delete",
             ]
             if any(p in _text for p in _skip_patterns):
+                continue
+
+            # Parse PaddleOCR model download progress
+            _model_m = re.search(r'Creating model:\s*\(([^,]+)', _text)
+            if _model_m:
+                _model_name = _model_m.group(1).strip().strip("'")
+                task_store.add_log(task_id, f"  PaddleOCR: 加载模型 {_model_name}（首次需下载，后续缓存）")
+                continue
+            _fetch_m = re.search(r'Fetching (\d+) files?:\s*(\d+)%', _text)
+            if _fetch_m:
+                _total_files = _fetch_m.group(1)
+                _pct = _fetch_m.group(2)
+                task_store.add_log(task_id, f"  PaddleOCR: 下载模型中... {_pct}%%")
+                continue
+            if "Model files already exist" in _text or "Using official model" in _text:
                 continue
 
             _m = re.search(r'\[(\d+)/(\d+)\]', _text)

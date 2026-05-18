@@ -152,7 +152,7 @@ const DEFAULT_CONFIG: AppConfig = {
   stacks_base_url: 'http://localhost:7788',
   stacks_username: '',
   stacks_password: '',
-  stacks_download_dir: r'D:\docker\stacks\download',
+  stacks_download_dir: 'D:\\docker\\stacks\\download',
   theme: 'auto',
   zfile_base_url: '',
   zfile_external_url: '',
@@ -2072,7 +2072,17 @@ export default function ConfigSettings() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Stacks 下载目录</label>
+              <input
+                type="text" value={form.stacks_download_dir || 'D:\\docker\\stacks\\download'}
+                onChange={(e) => updateForm({ stacks_download_dir: e.target.value })}
+                placeholder="D:\docker\stacks\download" spellCheck={false}
+                className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-0.5">stacks 下载文件目录，用于搜索已下载文件</p>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
               <button
                 type="button"
                 onClick={handleTestMineru}

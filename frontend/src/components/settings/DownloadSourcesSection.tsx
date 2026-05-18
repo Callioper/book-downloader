@@ -575,7 +575,7 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
         <div className="mt-2">
           <label className="block text-xs font-medium text-gray-600 mb-1">Stacks 下载目录</label>
           <input
-            type="text" value={(form as any).stacks_download_dir || r'D:\docker\stacks\download'}
+            type="text" value={(form as any).stacks_download_dir || 'D:\\docker\\stacks\\download'}
             onChange={(e) => updateForm({ stacks_download_dir: e.target.value } as any)}
             placeholder="D:\docker\stacks\download" spellCheck={false}
             className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
