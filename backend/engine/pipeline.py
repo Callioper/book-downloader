@@ -223,9 +223,8 @@ async def _run_ocrmypdf_with_progress(
                 "Model files already exist",
                 "To redownload, please delete",
             ]
-            # Also skip garbled/non-ASCII lines from paddlex internal logging
-            _text_stripped = _text.encode('ascii', errors='replace').decode('ascii')
-            if '\ufffd' in _text_stripped and len(_text) < 80:
+            # Also skip garbled lines from paddlex internal logging
+            if '\ufffd' in _text and len(_text) < 80:
                 continue
             if any(p in _text for p in _skip_patterns):
                 continue
@@ -2302,7 +2301,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
             # PaddleOCR always uses single process (PaddlePaddle uses all CPU cores internally)
             from platform_utils import configure_tesseract_env
             configure_tesseract_env()
-            _ocr_env = {**os.environ}
+            _ocr_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
             cmd = [
                 _paddle_venv_py, "-m", "ocrmypdf",
                 "--plugin", "ocrmypdf_paddleocr",
