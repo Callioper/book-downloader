@@ -11,7 +11,7 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from task_store import task_store, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED
@@ -226,20 +226,11 @@ async def download_pdf(task_id: str, type: str = Query(..., description="origina
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     filename = os.path.basename(file_path)
-    file_size = os.path.getsize(file_path)
 
-    def iterfile():
-        with open(file_path, "rb") as f:
-            while chunk := f.read(8192):
-                yield chunk
-
-    return StreamingResponse(
-        iterfile(),
+    return FileResponse(
+        file_path,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Length": str(file_size),
-        },
+        filename=filename,
     )
 
 
