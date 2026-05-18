@@ -150,15 +150,6 @@ export default function TaskDetailPage() {
     }
   }
 
-  const handleOpenPdf = async () => {
-    if (!taskId) return
-    try {
-      await axios.get(`${API_BASE}/tasks/${taskId}/open`)
-    } catch (e: any) {
-      alert('无法打开PDF: ' + e.message)
-    }
-  }
-
   const handleOpenFolder = async () => {
     if (!taskId) return
     try {
@@ -274,13 +265,33 @@ export default function TaskDetailPage() {
                 重试
               </button>
             )}
-            {task.status === 'completed' && task.report?.pdf_path && (
-              <button
-                onClick={handleOpenPdf}
-                className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
-              >
-                打开PDF
-              </button>
+            {task.status === 'completed' && (
+              <div className="flex gap-2 flex-wrap">
+                {(task.report?.original_path || task.report?.pdf_path) && (
+                  <a
+                    href={`${API_BASE}/tasks/${taskId}/download?type=original`}
+                    className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 inline-block"
+                  >
+                    下载原始PDF
+                  </a>
+                )}
+                {task.report?.ocr_path && (
+                  <a
+                    href={`${API_BASE}/tasks/${taskId}/download?type=ocr`}
+                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-block"
+                  >
+                    下载OCR版
+                  </a>
+                )}
+                {task.report?.compressed_path && (
+                  <a
+                    href={`${API_BASE}/tasks/${taskId}/download?type=compressed`}
+                    className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 inline-block"
+                  >
+                    下载压缩版
+                  </a>
+                )}
+              </div>
             )}
             {task.status === 'completed' && (
               <button

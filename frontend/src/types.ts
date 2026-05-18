@@ -70,6 +70,9 @@ export interface TaskReport {
   bookmark?: string
   bookmark_applied?: boolean
   ocr_done?: boolean
+  ocr_path?: string
+  original_path?: string
+  compressed_path?: string
   tmp_dir?: string
   output_file?: string
   completed_at?: string

@@ -2058,6 +2058,16 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
         await _emit(task_id, "step_progress", {"step": "ocr", "progress": 100})
         return report
 
+    # Preserve original PDF for download (OCR will overwrite pdf_path)
+    _original_pdf = pdf_path.replace(".pdf", "_original.pdf")
+    if not os.path.exists(_original_pdf):
+        try:
+            import shutil as _shutil_copy
+            _shutil_copy.copy2(pdf_path, _original_pdf)
+            report["original_path"] = _original_pdf
+        except Exception:
+            pass
+
     # Close any cached fitz handle so OCR can overwrite the file
     try:
         from api.toc import close_cached_doc
@@ -2890,6 +2900,17 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                         os.remove(bw_file)
                 except Exception:
                     pass
+
+    # Set download paths for frontend download buttons
+    if report.get("ocr_done"):
+        _ocr_copy = report.get("pdf_path", "") + ".ocr"
+        if os.path.exists(_ocr_copy):
+            report["ocr_path"] = _ocr_copy
+        else:
+            report["ocr_path"] = report.get("pdf_path", "")
+    _compressed = report.get("pdf_path", "")
+    if config.get("pdf_compress", False) and os.path.exists(_compressed):
+        report["compressed_path"] = _compressed
 
     return report
 

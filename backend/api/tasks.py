@@ -11,6 +11,7 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from task_store import task_store, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED
@@ -209,6 +210,38 @@ async def open_folder(task_id: str):
         except Exception as e:
             return {"ok": False, "message": str(e)}
     return {"ok": False, "message": "Folder not found"}
+
+
+@router.get("/{task_id}/download")
+async def download_pdf(task_id: str, type: str = Query(..., description="original|ocr|compressed")):
+    task = task_store.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    report = task.get("report", {})
+    path_map = {
+        "original": report.get("original_path") or report.get("pdf_path"),
+        "ocr": report.get("ocr_path"),
+        "compressed": report.get("compressed_path"),
+    }
+    file_path = path_map.get(type)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    filename = os.path.basename(file_path)
+    file_size = os.path.getsize(file_path)
+
+    def iterfile():
+        with open(file_path, "rb") as f:
+            while chunk := f.read(8192):
+                yield chunk
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(file_size),
+        },
+    )
 
 
 class ConfirmDownloadRequest(BaseModel):
