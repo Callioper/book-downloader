@@ -210,7 +210,7 @@ async def _run_ocrmypdf_with_progress(
                 continue
 
             _last_output = time.time()
-            _text = _line.decode(errors='replace').strip()
+            _text = _line.decode('utf-8', errors='replace').strip()
             if not _text:
                 continue
             _had_output = True
