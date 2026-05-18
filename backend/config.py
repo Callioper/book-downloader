@@ -74,6 +74,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "stacks_username": "",
     "stacks_password": "",
     "stacks_timeout": 180,
+    "stacks_download_dir": r"D:\docker\stacks\download",
     "pdf_compress": False,
     "pdf_compress_half": True,
     "ai_vision_enabled": True,

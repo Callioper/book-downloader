@@ -1084,9 +1084,13 @@ async def _download_via_aa_and_stacks(
 
                         # 如果 API 没返回路径，尝试常用默认路径
                         if not extra_search_paths:
-                            for guess in ("D:\\stacks-data\\download",
-                                          r"D:\docker\stacks\download",
-                                          os.path.expandvars(r"%USERPROFILE%\stacks\download")):
+                            _stacks_dl_dir = config.get("stacks_download_dir", "")
+                            _fallback_guesses = ["D:\\stacks-data\\download",
+                                                 r"D:\docker\stacks\download",
+                                                 os.path.expandvars(r"%USERPROFILE%\stacks\download")]
+                            if _stacks_dl_dir:
+                                _fallback_guesses.insert(0, _stacks_dl_dir)
+                            for guess in _fallback_guesses:
                                 if os.path.isdir(guess):
                                     extra_search_paths.append(guess)
                                     task_store.add_log(task_id, f"AA: using default search path: {guess}")

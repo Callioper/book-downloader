@@ -572,6 +572,16 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
             className="rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         </div>
+        <div className="mt-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Stacks 下载目录</label>
+          <input
+            type="text" value={(form as any).stacks_download_dir || r'D:\docker\stacks\download'}
+            onChange={(e) => updateForm({ stacks_download_dir: e.target.value } as any)}
+            placeholder="D:\docker\stacks\download" spellCheck={false}
+            className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="text-[10px] text-gray-400 mt-0.5">stacks Docker 下载文件所在目录，用于查找已下载文件</p>
+        </div>
         <div className="flex items-center gap-2 mt-2">
           <button
             type="button"

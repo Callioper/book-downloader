@@ -11,6 +11,7 @@ interface AppConfig {
   stacks_base_url: string
   stacks_username: string
   stacks_password: string
+  stacks_download_dir: string
   zfile_base_url: string
   zfile_external_url: string
   zfile_storage_key: string
@@ -151,6 +152,7 @@ const DEFAULT_CONFIG: AppConfig = {
   stacks_base_url: 'http://localhost:7788',
   stacks_username: '',
   stacks_password: '',
+  stacks_download_dir: r'D:\docker\stacks\download',
   theme: 'auto',
   zfile_base_url: '',
   zfile_external_url: '',

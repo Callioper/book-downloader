@@ -118,6 +118,7 @@ export interface AppConfig {
   stacks_base_url: string
   stacks_username: string
   stacks_password: string
+  stacks_download_dir: string
   zfile_base_url: string
   zfile_external_url: string
   zfile_storage_key: string
