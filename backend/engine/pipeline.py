@@ -220,10 +220,13 @@ async def _run_ocrmypdf_with_progress(
                 "No ccache found",
                 "warnings.warn",
                 "UserWarning",
-                "提供的模式无法找到文件",
                 "Model files already exist",
                 "To redownload, please delete",
             ]
+            # Also skip garbled/non-ASCII lines from paddlex internal logging
+            _text_stripped = _text.encode('ascii', errors='replace').decode('ascii')
+            if '\ufffd' in _text_stripped and len(_text) < 80:
+                continue
             if any(p in _text for p in _skip_patterns):
                 continue
 
