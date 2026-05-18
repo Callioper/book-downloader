@@ -101,6 +101,7 @@ def _format_eta(remaining_seconds: float) -> str:
     minutes = minutes % 60
     return f"约{hours}时{minutes}分"
 
+_PADDLE_MODEL_COUNT = 3  # PP-LCNet, PP-OCRv5_server_det, PP-OCRv5_server_rec
 
 async def _run_ocrmypdf_with_progress(
     task_id: str, cmd: List[str],
@@ -126,6 +127,12 @@ async def _run_ocrmypdf_with_progress(
     _last = 0
     _had_output = False
     _last_mtime = 0.0
+    _models_loaded = False
+    _models_loaded_time = 0.0
+    _model_load_count = 0
+    _last_pdf_page_count = 0
+    _last_pdf_check_time = 0.0
+    _estimation_notified = False
 
     def _count_output_pages() -> int:
         """Try to open output PDF and count pages. Returns 0 if not accessible yet."""
@@ -142,7 +149,7 @@ async def _run_ocrmypdf_with_progress(
 
     async def _monitor(p):
         """Emit heartbeat progress while process is running."""
-        nonlocal _cur, _tot, _last, _last_mtime
+        nonlocal _cur, _tot, _last, _last_mtime, _models_loaded, _models_loaded_time, _last_pdf_page_count, _last_pdf_check_time, _estimation_notified
         _was_suspended = False
         while p.returncode is None:
             await asyncio.sleep(5)
@@ -169,15 +176,55 @@ async def _run_ocrmypdf_with_progress(
             _now = time.time()
             _elapsed_sec = int(_now - _start)
 
+            # Hybrid progress estimation for engines that don't output per-page progress (e.g. PaddleOCR)
+            if _models_loaded and total_pages > 0:
+                # 1) Try counting output PDF pages (reliable, ocrmypdf writes incrementally)
+                if output_pdf and _now - _last_pdf_check_time > 15:
+                    _last_pdf_check_time = _now
+                    _pdf_pages = _count_output_pages()
+                    if _pdf_pages > _last_pdf_page_count:
+                        _last_pdf_page_count = _pdf_pages
+                        _cur = _pdf_pages
+                        _tot = total_pages
+                        if _pdf_pages == 1 and _cur == 1:
+                            task_store.add_log(task_id, "  PaddleOCR: 模型加载完成，检测到首页已输出，实时估算进度")
+                # 2) Time-based estimate as fallback (keeps updating as time passes)
+                if _models_loaded_time > 0:
+                    _est_pp = 30.0
+                    _estimated_cur = min(total_pages - 1, int((_now - _models_loaded_time) / _est_pp))
+                    if _estimated_cur > _last_pdf_page_count:
+                        if not _estimation_notified and _estimated_cur >= 1:
+                            _estimation_notified = True
+                            task_store.add_log(task_id, f"  PaddleOCR: 模型加载完成，按时间估算进度（{_est_pp:.0f}秒/页）")
+                        _cur = _estimated_cur
+                        _tot = total_pages
+
             if _cur == 0 or total_pages == 0:
                 # No page info available yet — fallback to heartbeat
+                _elapsed = _now - _start
                 _detail = f"处理中... {_elapsed_sec//60}分{_elapsed_sec%60}秒" if _elapsed_sec >= 60 else f"处理中... {_elapsed_sec}秒"
                 await _emit_progress(task_id, "ocr", 0, _detail, "")
+                continue
+
+            # Emit real/estimated progress
+            _pct = int(_cur / total_pages * 100)
+            # Show at least 1% when processing has started but <1%
+            if _pct == 0 and _cur > 0:
+                _pct = 1
+            _elapsed = _now - _start
+            _eta = ""
+            if _cur > 1 and _elapsed > 5:
+                _sec_pp = _elapsed / _cur
+                _rem = (total_pages - _cur) * _sec_pp
+                _eta = _format_eta(_rem)
+            if _pct != _last or (_now - _start - max(_last if isinstance(_last, float) else 0, 0)) > 10:
+                _last = _pct if _pct > 0 else _now
+                await _emit_progress(task_id, "ocr", _pct, f"{_cur}/{total_pages} 页", _eta)
 
     _monitor_task = asyncio.create_task(_monitor(proc))
 
     async def _reader(p) -> int:
-        nonlocal _cur, _tot, _last, _had_output
+        nonlocal _cur, _tot, _last, _had_output, _models_loaded, _models_loaded_time, _model_load_count
         _last_output = time.time()
         while True:
             try:
@@ -237,6 +284,12 @@ async def _run_ocrmypdf_with_progress(
                 _cached = os.path.isdir(_cache_dir)
                 _desc = "从缓存加载" if _cached else "首次下载（后续缓存）"
                 task_store.add_log(task_id, f"  PaddleOCR: 加载模型 {_model_name}（{_desc}）")
+                _model_load_count += 1
+                if _model_load_count >= _PADDLE_MODEL_COUNT and not _models_loaded:
+                    _models_loaded = True
+                    _models_loaded_time = time.time()
+                    _detail = f"  PaddleOCR: {_PADDLE_MODEL_COUNT}/{_PADDLE_MODEL_COUNT} 模型加载完成{', 开始 OCR 处理 ' + str(total_pages) + ' 页' if total_pages > 0 else ''}"
+                    task_store.add_log(task_id, _detail)
                 continue
             _fetch_m = re.search(r'Fetching (\d+) files?:\s*(\d+)%', _text)
             if _fetch_m:
@@ -251,16 +304,17 @@ async def _run_ocrmypdf_with_progress(
             if _m:
                 _cur = int(_m.group(1))
                 _tot = int(_m.group(2))
+                task_store.add_log(task_id, f"  PaddleOCR: {_cur}/{_tot} 页")
             elif total_pages > 0:
                 _m0 = re.search(r'\[(\d+)\]', _text)
                 if _m0:
                     _cur = int(_m0.group(1))
                     _tot = total_pages
-                    if _cur % 1 == 0 or _cur == total_pages:
-                        task_store.add_log(task_id, f"  PaddleOCR: {_cur}/{_tot} 页")
-                    continue  # skip logging raw [N] line
-
-            task_store.add_log(task_id, f"  {_text[:200]}")
+                    task_store.add_log(task_id, f"  PaddleOCR: {_cur}/{_tot} 页")
+                else:
+                    task_store.add_log(task_id, f"  {_text[:200]}")
+            else:
+                task_store.add_log(task_id, f"  {_text[:200]}")
 
             _m2 = re.search(r'[Pp]age\s+(\d+)\s+[oO]f\s+(\d+)', _text)
             if _m2:
