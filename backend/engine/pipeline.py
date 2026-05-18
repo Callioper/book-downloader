@@ -57,7 +57,7 @@ async def _emit_progress(task_id: str, step: str, progress: int, detail: str = "
 
 async def _check_paused(task_id: str):
     """Block while task is paused. Returns True if task was cancelled during pause."""
-    import asyncio as _asyncio
+
     was_paused = False
     while True:
         t = task_store.get(task_id)
@@ -69,7 +69,7 @@ async def _check_paused(task_id: str):
         if status != STATUS_PAUSED:
             return False
         was_paused = True
-        await _asyncio.sleep(1)
+        await asyncio.sleep(1)
 
 
 def _suspend_process(pid: int):
@@ -2029,7 +2029,6 @@ def _is_scanned(pdf_path: str, sample_pages: int = 5, python_cmd: str = "") -> b
     if python_cmd:
         try:
             import subprocess as _sp
-            import shlex as _sh
             code = (
                 "import fitz;"
                 f"d=fitz.open(r{repr(str(pdf_path))});"
@@ -2079,7 +2078,6 @@ def _is_ocr_readable(pdf_path: str, sample_pages: int = 5, min_cjk_ratio: float 
     if python_cmd:
         try:
             import subprocess as _sp
-            import shlex as _sh
             code = (
                 "import fitz;"
                 f"d=fitz.open(r{repr(str(pdf_path))});"
@@ -2481,15 +2479,14 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                             for prefix in prefixes:
                                 if text_lower.startswith(prefix):
                                     # Try to extract percentage
-                                    import re as _re
-                                    pct_match = _re.search(r'(\d+)%', text)
+                                    pct_match = re.search(r'(\d+)%', text)
                                     if pct_match:
                                         pct = int(pct_match.group(1))
                                         stage_idx = _stage_order.get(key, 0)
                                         overall = 10 + int((stage_idx + pct / 100.0) / _total_stages * 80)
                                         _detail = f"{label}: {pct}%"
                                         # Try to extract (current/total) page numbers
-                                        _pg_match = _re.search(r'\((\d+)/(\d+)\)', text)
+                                        _pg_match = re.search(r'\((\d+)/(\d+)\)', text)
                                         _emit_data = {
                                             "step": "ocr", "progress": overall,
                                             "stage": key, "stage_progress": pct,
