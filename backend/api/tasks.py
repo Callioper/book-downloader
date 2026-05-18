@@ -95,7 +95,6 @@ async def cancel_task(task_id: str):
     ok = task_store.cancel(task_id)
     if not ok:
         raise HTTPException(status_code=400, detail="Task cannot be cancelled")
-    task_store.update(task_id, {"status": STATUS_CANCELLED})
     await ws_manager.broadcast_task(task_id, {
         "type": "task_update",
         "task_id": task_id,
