@@ -233,7 +233,10 @@ async def _run_ocrmypdf_with_progress(
             _model_m = re.search(r'Creating model:\s*\(([^,]+)', _text)
             if _model_m:
                 _model_name = _model_m.group(1).strip().strip("'")
-                task_store.add_log(task_id, f"  PaddleOCR: 加载模型 {_model_name}（首次需下载，后续缓存）")
+                _cache_dir = os.path.join(os.path.expanduser("~"), ".paddlex", "official_models", _model_name)
+                _cached = os.path.isdir(_cache_dir)
+                _desc = "从缓存加载" if _cached else "首次下载（后续缓存）"
+                task_store.add_log(task_id, f"  PaddleOCR: 加载模型 {_model_name}（{_desc}）")
                 continue
             _fetch_m = re.search(r'Fetching (\d+) files?:\s*(\d+)%', _text)
             if _fetch_m:
