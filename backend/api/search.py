@@ -1257,6 +1257,31 @@ def _pip_install_cmd() -> List[str]:
     return [python_cmd, "-m", "pip", "install"] + user_flag
 
 
+def _auto_install_python311() -> str:
+    """Download and install Python 3.11 silently, return path to python.exe or ''."""
+    import tempfile
+    _py311_url = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+    _install_dir = r"C:\Python311"
+    if os.path.exists(os.path.join(_install_dir, "python.exe")):
+        from platform_utils import find_python_executable
+        return find_python_executable("3.11") or ""
+    try:
+        _tmp = os.path.join(tempfile.gettempdir(), "python-3.11.9-amd64.exe")
+        if not os.path.exists(_tmp):
+            urllib.request.urlretrieve(_py311_url, _tmp)
+        subprocess.run(
+            [_tmp, "/quiet", "InstallAllUsers=0", "Include_test=0",
+             f"TargetDir={_install_dir}"],
+            timeout=300, check=False,
+        )
+        if os.path.exists(os.path.join(_install_dir, "python.exe")):
+            from platform_utils import find_python_executable
+            return find_python_executable("3.11") or ""
+    except Exception:
+        pass
+    return ""
+
+
 @router.post("/install-ocr")
 async def install_ocr(body: InstallOCRRequest):
     engine = body.engine
@@ -1365,11 +1390,13 @@ async def install_ocr(body: InstallOCRRequest):
                 if r_check.returncode == 0:
                     return {"ok": True, "message": "PaddleOCR venv 已就绪"}
 
-            # Find Python 3.11
+            # Find Python 3.11 or auto-install
             from platform_utils import find_python_executable
             _py311 = find_python_executable("3.11")
             if not _py311:
-                return {"ok": False, "message": "未找到 Python 3.11，请先安装 Python 3.11"}
+                _py311 = _auto_install_python311()
+                if not _py311:
+                    return {"ok": False, "message": "自动安装 Python 3.11 失败，请手动下载: https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"}
 
             # Create venv
             subprocess.run([_py311, "-m", "venv", _venv_dir], capture_output=True, timeout=30)

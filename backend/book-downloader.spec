@@ -48,6 +48,7 @@ a = Analysis(
         'config', 'search_engine', 'task_store', 'ws_manager', 'version',
         'curl_cffi',
         'httpx', 'httpcore', 'h11', 'certifi',
+        'websockets',
         'PIL', 'PIL.Image', 'PIL.ImageDraw', 'PIL.ImageFont',
         'pikepdf', 'fitz', 'pymupdf',
     ],
