@@ -888,28 +888,6 @@ async def _fetch_nlc_metadata(task_id: str, report: Dict[str, Any], config: Dict
         task_store.add_log(task_id, f"NLC: error: {str(e)[:100]}")
 
 
-async def _get_page_with_flare(url: str, proxy: str = "", timeout: int = 30) -> Optional[str]:
-    """Fetch a web page, trying FlareSolverr first (for Cloudflare bypass), then direct."""
-    try:
-        from engine.flaresolverr import get_page_content
-        result = await get_page_content(url, proxy)
-        if result:
-            return result
-    except ImportError:
-        pass
-    # Direct fallback
-    import requests as _req
-    try:
-        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        kwargs = {"timeout": timeout, "headers": h, "verify": False}
-        if proxy:
-            kwargs["proxies"] = {"http": proxy, "https": proxy}
-        r = _req.get(url, **kwargs)
-        return r.text if r.status_code == 200 else None
-    except Exception:
-        return None
-
-
 async def _download_via_aa_and_stacks(
     task_id: str, config: Dict[str, Any], report: Dict[str, Any],
     ss_code: str, isbn: str, title: str, proxy: str,
@@ -3138,6 +3116,22 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                         os.remove(ocr_dest)
                     shutil.move(ocr_copy, ocr_dest)
                     task_store.add_log(task_id, f"OCR 原稿已保存: {ocr_dest}")
+                    report["ocr_path"] = ocr_dest
+                # Update download paths after move to finished_dir
+                if moved:
+                    if report.get("ocr_path") and not os.path.exists(ocr_copy):
+                        report["ocr_path"] = dest_pdf
+                    if report.get("compressed_path"):
+                        report["compressed_path"] = dest_pdf
+                    if report.get("original_path"):
+                        _orig_dest = os.path.join(target_dir, f"{ss_code}_{safe_title}_original{ext}" if ss_code else f"{safe_title}_original{ext}")
+                        _old_orig = report["original_path"]
+                        if os.path.exists(_old_orig) and os.path.abspath(_old_orig) != os.path.abspath(_orig_dest):
+                            if os.path.exists(_orig_dest):
+                                os.remove(_orig_dest)
+                            shutil.move(_old_orig, _orig_dest)
+                            report["original_path"] = _orig_dest
+                            task_store.add_log(task_id, f"原始 PDF 已移动: {_orig_dest}")
             except Exception as e:
                 task_store.add_log(task_id, f"Finalize move error: {e}")
 
