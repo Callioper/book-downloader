@@ -1085,6 +1085,7 @@ async def _download_via_aa_and_stacks(
                         # 如果 API 没返回路径，尝试常用默认路径
                         if not extra_search_paths:
                             for guess in ("D:\\stacks-data\\download",
+                                          r"D:\docker\stacks\download",
                                           os.path.expandvars(r"%USERPROFILE%\stacks\download")):
                                 if os.path.isdir(guess):
                                     extra_search_paths.append(guess)
