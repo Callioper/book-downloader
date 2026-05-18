@@ -558,6 +558,7 @@ export default function ConfigSettings() {
     if (!config) return
     handleDetectOcrEngine('tesseract')
     handleDetectOcrEngine('ocrmypdf')
+    handleDetectOcrEngine('paddleocr')
   }, [config])
 
   // Auto-detect database on mount
