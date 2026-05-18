@@ -30,6 +30,7 @@ def split_pdf(pdf_path: str, max_pages: int = 50) -> List[str]:
         sub.insert_pdf(doc, from_page=start, to_page=end)
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         sub.save(tmp.name, garbage=3, deflate=True)
+        tmp.close()
         sub.close()
         chunks.append(tmp.name)
     doc.close()
