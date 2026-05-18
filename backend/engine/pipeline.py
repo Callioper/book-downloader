@@ -2043,7 +2043,7 @@ def _is_scanned(pdf_path: str, sample_pages: int = 5, python_cmd: str = "") -> b
             r = _sp.run([python_cmd, "-c", code], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30)
             if r.returncode == 0 and r.stdout.strip() in ("0", "1"):
                 return r.stdout.strip() == "1"
-        except Exception:
+        except (fitz.FileDataError, RuntimeError):
             pass
 
     # Ultimate fallback: assume scanned (needs OCR)
@@ -2097,7 +2097,7 @@ def _is_ocr_readable(pdf_path: str, sample_pages: int = 5, min_cjk_ratio: float 
             r = _sp.run([python_cmd, "-c", code], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30)
             if r.returncode == 0 and r.stdout.strip() in ("0", "1"):
                 return r.stdout.strip() == "1"
-        except Exception:
+        except (fitz.FileDataError, RuntimeError):
             pass
 
     return True  # 无法验证时假设通过
