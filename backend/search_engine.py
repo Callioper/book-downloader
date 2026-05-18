@@ -108,8 +108,6 @@ class SearchEngine:
                         all_books.append(book)
             except Exception:
                 pass
-            finally:
-                conn.close()
 
         # Deduplicate
         seen = set()
@@ -142,6 +140,15 @@ class SearchEngine:
 
     def is_connected(self) -> bool:
         return len(self.available_dbs()) > 0
+
+    def close_all(self):
+        """Close all cached database connections."""
+        for conn in self._dbs.values():
+            try:
+                conn.close()
+            except Exception:
+                pass
+        self._dbs.clear()
 
 
 search_engine = SearchEngine()
