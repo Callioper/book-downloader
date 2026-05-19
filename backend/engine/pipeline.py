@@ -914,7 +914,22 @@ async def _download_via_aa_and_stacks(
             except Exception as e:
                 task_store.add_log(task_id, f"AA: stacks login error: {e}")
 
-        # Step C: 批量获取所有 MD5 详情（并行），然后遍历
+        # Step C: 按标题相关度预过滤 MD5（避免拉取无关详情页）
+        if title or isbn:
+            filtered = []
+            for e in all_md5_entries:
+                e_title = e.get("title", "")
+                if not e_title:
+                    filtered.append(e)  # no title extracted, keep for detail check
+                elif _calc_title_relevance(e_title, title) >= 50:
+                    filtered.append(e)
+                elif isbn and isbn in e_title:
+                    filtered.append(e)  # ISBN match in title text
+            if len(filtered) < len(all_md5_entries):
+                task_store.add_log(task_id, f"AA: title-filtered MD5 entries {len(all_md5_entries)} → {len(filtered)}")
+                all_md5_entries = filtered
+
+        # Step D: 批量获取所有 MD5 详情（并行），然后遍历
         md5_list = [e["md5"] for e in all_md5_entries]
         task_store.add_log(task_id, f"AA: fetching details for {len(md5_list)} MD5 entries in parallel...")
         details_list = await batch_get_md5_details(md5_list, proxy)
@@ -2098,7 +2113,15 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
         return report
     ocr_oversample = str(config.get("ocr_oversample", 200))
     _opt_level = "0"
-    # Always use --optimize 0 to avoid jbig2.EXE crash during PDF post-processing
+    if config.get("pdf_compress", False):
+        import shutil as _opt_sh
+        if _opt_sh.which("gswin64c") or _opt_sh.which("gs"):
+            _opt_level = "1"
+            task_store.add_log(task_id, "PDF optimization enabled (GhostScript found for ocrmypdf --optimize)")
+        else:
+            task_store.add_log(task_id, "PDF optimization requested but GhostScript not found; ocrmypdf will skip --optimize")
+    else:
+        task_store.add_log(task_id, "PDF optimization disabled")
 
     if ocr_engine == "llm_ocr":
         task_store.add_log(task_id, f"OCR engine: llm_ocr (model: {config.get('llm_ocr_model', '')}, concurrency: {config.get('llm_ocr_concurrency', 1)})")
@@ -2187,6 +2210,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 _py_for_ocr, "-m", "ocrmypdf",
                 "--ocr-engine", "tesseract",
                 "--force-ocr",
+                "--jbig2-threshold", "0",
                 "--optimize", _opt_level,
                 "--force-ocr",
                 "--oversample", ocr_oversample,
@@ -2242,6 +2266,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
             cmd = [
                 _paddle_venv_py, "-m", "ocrmypdf",
                 "--plugin", "ocrmypdf_paddleocr",
+                "--jbig2-threshold", "0",
                 "--optimize", _opt_level,
                 "--oversample", ocr_oversample,
                 "-l", ocr_lang or "chi_sim+eng",
@@ -3051,6 +3076,7 @@ async def run_pipeline(task_id: str) -> None:
         _start_from = 0
         report = {}
     task_store.update(task_id, {"status": STATUS_RUNNING})
+    task_store.add_log(task_id, "PIPELINE v1.3.5-FIX: jbig2-threshold=0, title-filter, bookmark-preinject active")
     await _emit(task_id, "task_started", {"task_id": task_id})
 
     # Log current settings at pipeline start
