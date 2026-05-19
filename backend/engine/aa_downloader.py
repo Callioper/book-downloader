@@ -194,6 +194,7 @@ async def get_md5_details(
         "isbn": "",
         "title": "",
         "extension": "",
+        "filepath": "",
     }
 
     md5_url = f"{base_url}/md5/{md5}"
@@ -251,6 +252,7 @@ async def get_md5_details(
                     if 'Filepath' in label_text:
                         filepath_text = spans[1].get_text(strip=True)
                         # 从路径中提取文件名
+                        result["filepath"] = filepath_text
                         if '\\' in filepath_text:
                             filename = filepath_text.split('\\')[-1]
                         elif '/' in filepath_text:

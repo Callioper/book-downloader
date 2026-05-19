@@ -903,7 +903,7 @@ async def _download_via_aa_and_stacks(
     # Step A: 搜索 AA 获取所有 MD5 条目
     search_queries = []
     if ss_code:
-        search_queries.append(("SS", f"duxiu/initial_release/{ss_code}.zip"))
+        search_queries.append(("SS", ss_code))
     if isbn:
         search_queries.append(("ISBN", isbn))
     if title and not search_queries:
@@ -1002,6 +1002,15 @@ async def _download_via_aa_and_stacks(
             details = details_by_md5.get(md5, {"md5": md5})
             filesize_bytes = details.get("filesize_bytes", entry.get("size_bytes", 0))
             md5_title = details.get("title", "")
+
+            # SS 码模式：过滤 filepath 必须包含 initial_release/{ss_code}
+            if ss_code:
+                filepath = details.get("filepath", "")
+                pattern = f"initial_release/{ss_code}"
+                if pattern not in filepath:
+                    task_store.add_log(task_id, f"AA: MD5 {md5} filepath mismatch (no '{pattern}' in '{filepath[:60]}'), skipping")
+                    continue
+                task_store.add_log(task_id, f"AA: MD5 {md5} filepath matched '{pattern}'")
 
             # 匹配 MD5 详情中的标题/ISBN 与 Step1 元数据
             if title or isbn:
