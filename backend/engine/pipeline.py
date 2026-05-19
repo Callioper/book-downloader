@@ -903,7 +903,7 @@ async def _download_via_aa_and_stacks(
     # Step A: 搜索 AA 获取所有 MD5 条目
     search_queries = []
     if ss_code:
-        search_queries.append(("SS", ss_code))
+        search_queries.append(("SS", f"{ss_code} duxiu"))
     if isbn:
         search_queries.append(("ISBN", isbn))
     if title and not search_queries:
