@@ -52,8 +52,27 @@ def bw_compress_pdf_blocking(
                     continue
 
                 try:
-                    raw = obj.read_raw_bytes()
-                    img = Image.open(io.BytesIO(raw))
+                    try:
+                        data = obj.read_bytes()
+                    except pikepdf.PdfError:
+                        data = obj.read_raw_bytes()  # DCTDecode cannot be decoded by pikepdf
+                    img = None
+                    try:
+                        img = Image.open(io.BytesIO(data))
+                    except Exception:
+                        w = int(obj.Width)
+                        h = int(obj.Height)
+                        cs = str(obj.get(pikepdf.Name.ColorSpace, '/DeviceRGB'))
+                        bpc = int(obj.get(pikepdf.Name.BitsPerComponent, 8))
+                        if '/DeviceGray' in cs:
+                            mode = '1' if bpc == 1 else 'L'
+                        elif '/DeviceRGB' in cs:
+                            mode = 'RGB'
+                        elif '/DeviceCMYK' in cs:
+                            mode = 'CMYK'
+                        else:
+                            raise ValueError(f"Unsupported colorspace: {cs}")
+                        img = Image.frombytes(mode, (w, h), data)
 
                     if half_res:
                         target_w = img.width // 2
