@@ -293,7 +293,7 @@ async def get_md5_details(
     return result
 
 
-def _extract_md5_regex_fallback(result: Dict[str, Any], html: str):
+def _extract_md5_regex_fallback(result: Dict[str, Any], html: str) -> None:
     """当 BeautifulSoup 不可用时的 regex 兜底提取"""
     if not result["title"]:
         title_m = re.search(r'<h\d[^>]*>([^<]{3,100})</h\d>', html)
@@ -495,7 +495,7 @@ async def resolve_download_url(
     return None
 
 
-def _detect_stacks_failure(status_data: dict, md5: str) -> Optional[str]:
+def _detect_stacks_failure(status_data: Dict[str, Any], md5: str) -> Optional[str]:
     """
     Inspect a GET /api/status response for a failed queue item matching md5.
     Returns the error message if found, or None if the item is not in a failed state.

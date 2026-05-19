@@ -300,7 +300,7 @@ export default function TaskDetailPage() {
           <LogStream logs={task.logs || []} />
         </div>
 
-        <TaskReport report={task.report || {}} finishedDir={cfg?.finished_dir} createdAt={task.created_at} />
+        <TaskReport report={task.report || {}} finishedDir={cfg?.finished_dir} createdAt={task.created_at} taskId={taskId} />
       </div>
 
       <div className="space-y-4 flex flex-col">

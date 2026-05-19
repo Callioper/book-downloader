@@ -78,7 +78,7 @@ class SearchEngine:
     def search(self, field: str = "title", query: str = "", page: int = 1, page_size: int = 20,
                fuzzy: bool = True, **kwargs) -> Dict[str, Any]:
         field_map = {"title": "title", "author": "author", "publisher": "publisher",
-                     "isbn": "ISBN", "sscode": "SS_code"}
+                     "isbn": "ISBN", "sscode": "SS_code", "ss_code": "SS_code"}
         col = field_map.get(field, "title")
         pattern = "%" + query.replace("%", "%%") + "%"
 
@@ -108,8 +108,6 @@ class SearchEngine:
                         all_books.append(book)
             except Exception:
                 pass
-            finally:
-                conn.close()
 
         # Deduplicate
         seen = set()
@@ -142,6 +140,14 @@ class SearchEngine:
 
     def is_connected(self) -> bool:
         return len(self.available_dbs()) > 0
+
+    def close_all(self):
+        for conn in self._dbs.values():
+            try:
+                conn.close()
+            except Exception:
+                pass
+        self._dbs.clear()
 
 
 search_engine = SearchEngine()

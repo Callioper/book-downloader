@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { SectionProps } from './types'
-import { LLM_OCR_RECOMMENDED } from '../../constants'
+import { LLM_OCR_RECOMMENDED, API_BASE } from '../../constants'
 
 function StatusDot({ status }: { status: 'green' | 'red' | 'yellow' | null }) {
   const colors: Record<string, string> = {
@@ -276,6 +276,28 @@ function OCRNetworkSection({ form, updateForm, mountedRef }: SectionProps) {
       })
       .catch(() => {})
   }, [form.ocr_engine, mountedRef])
+
+  // Auto-detect PaddleOCR availability on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/check-ocr?engine=paddleocr`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mountedRef.current) return
+        setOcrEngines((prev) => ({
+          ...prev,
+          paddleocr: {
+            installed: data.ok || false,
+            installing: false,
+            msg: data.version || data.message || (data.ok ? '已安装' : '未检测到'),
+            has_chi_sim: data.has_chi_sim,
+            languages: data.languages,
+            venv: data.venv,
+          } as any,
+        }))
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Update OCR header status when engine selection changes
   useEffect(() => {

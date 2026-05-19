@@ -11,6 +11,7 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from task_store import task_store, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED
@@ -94,7 +95,6 @@ async def cancel_task(task_id: str):
     ok = task_store.cancel(task_id)
     if not ok:
         raise HTTPException(status_code=400, detail="Task cannot be cancelled")
-    task_store.update(task_id, {"status": STATUS_CANCELLED})
     await ws_manager.broadcast_task(task_id, {
         "type": "task_update",
         "task_id": task_id,
@@ -209,6 +209,28 @@ async def open_folder(task_id: str):
         except Exception as e:
             return {"ok": False, "message": str(e)}
     return {"ok": False, "message": "Folder not found"}
+
+
+@router.get("/{task_id}/download")
+async def download_pdf(task_id: str, type: str = Query(..., description="original|ocr|compressed")):
+    task = task_store.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    report = task.get("report", {})
+    path_map = {
+        "original": report.get("original_path") or report.get("pdf_path"),
+        "ocr": report.get("ocr_path"),
+        "compressed": report.get("compressed_path"),
+    }
+    file_path = path_map.get(type)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    filename = os.path.basename(file_path)
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        filename=filename,
+    )
 
 
 class ConfirmDownloadRequest(BaseModel):

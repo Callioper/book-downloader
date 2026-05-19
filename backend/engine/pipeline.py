@@ -32,7 +32,7 @@ PIPELINE_STEPS = [
 ]
 
 
-async def _emit(task_id: str, event_type: str, data: Dict[str, Any]):
+async def _emit(task_id: str, event_type: str, data: Dict[str, Any]) -> None:
     await ws_manager.broadcast_task(task_id, {
         "type": event_type,
         "task_id": task_id,
@@ -40,7 +40,7 @@ async def _emit(task_id: str, event_type: str, data: Dict[str, Any]):
     })
 
 
-async def _emit_progress(task_id: str, step: str, progress: int, detail: str = "", eta: str = ""):
+async def _emit_progress(task_id: str, step: str, progress: int, detail: str = "", eta: str = "") -> None:
     """Emit step_progress and persist to task_store atomically."""
     await _emit(task_id, "step_progress", {
         "step": step,
@@ -55,7 +55,7 @@ async def _emit_progress(task_id: str, step: str, progress: int, detail: str = "
     })
 
 
-async def _check_paused(task_id: str):
+async def _check_paused(task_id: str) -> bool:
     """Block while task is paused. Returns True if task was cancelled during pause."""
     import asyncio as _asyncio
     was_paused = False
@@ -72,17 +72,17 @@ async def _check_paused(task_id: str):
         await _asyncio.sleep(1)
 
 
-def _suspend_process(pid: int):
+def _suspend_process(pid: int) -> bool:
     from platform_utils import suspend_process
     return suspend_process(pid)
 
 
-def _resume_process(pid: int):
+def _resume_process(pid: int) -> bool:
     from platform_utils import resume_process
     return resume_process(pid)
 
 
-def _kill_proc_tree(pid: int):
+def _kill_proc_tree(pid: int) -> None:
     from platform_utils import kill_process_tree
     kill_process_tree(pid)
 
@@ -733,7 +733,7 @@ def _title_similarity(a: str, b: str) -> float:
     return overlap / max(len(a_chars), len(b_chars), 1)
 
 
-def _merge_db_book(book: Dict[str, Any], report: Dict[str, Any]):
+def _merge_db_book(book: Dict[str, Any], report: Dict[str, Any]) -> None:
     """将 EbookDatabase 的数据合并到 report 中，不覆盖已有值"""
     fields = {
         "book_id": ("book_id", "id"),
@@ -763,7 +763,7 @@ def _merge_db_book(book: Dict[str, Any], report: Dict[str, Any]):
         logger.debug(f"Stored second_pass_code for {report.get('book_id', '?')}")
 
 
-async def _fetch_nlc_metadata(task_id: str, report: Dict[str, Any], config: Dict[str, Any]):
+async def _fetch_nlc_metadata(task_id: str, report: Dict[str, Any], config: Dict[str, Any]) -> None:
     """从 NLC 国家图书馆补全作者/出版社/出版年/内容提要/主题词"""
     isbn = report.get("isbn", "")
     title = report.get("title", "")
@@ -812,28 +812,6 @@ async def _fetch_nlc_metadata(task_id: str, report: Dict[str, Any], config: Dict
         task_store.add_log(task_id, "NLC: module not available")
     except Exception as e:
         task_store.add_log(task_id, f"NLC: error: {str(e)[:100]}")
-
-
-async def _get_page_with_flare(url: str, proxy: str = "", timeout: int = 30) -> Optional[str]:
-    """Fetch a web page, trying FlareSolverr first (for Cloudflare bypass), then direct."""
-    try:
-        from engine.flaresolverr import get_page_content
-        result = await get_page_content(url, proxy)
-        if result:
-            return result
-    except ImportError:
-        pass
-    # Direct fallback
-    import requests as _req
-    try:
-        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        kwargs = {"timeout": timeout, "headers": h, "verify": False}
-        if proxy:
-            kwargs["proxies"] = {"http": proxy, "https": proxy}
-        r = _req.get(url, **kwargs)
-        return r.text if r.status_code == 200 else None
-    except Exception:
-        return None
 
 
 async def _download_via_aa_and_stacks(
@@ -937,14 +915,14 @@ async def _download_via_aa_and_stacks(
                 task_store.add_log(task_id, f"AA: stacks login error: {e}")
 
         # Step C: 批量获取所有 MD5 详情（并行），然后遍历
-        md5_list = [e["md5"] for e in all_md5_entries[:10]]
+        md5_list = [e["md5"] for e in all_md5_entries]
         task_store.add_log(task_id, f"AA: fetching details for {len(md5_list)} MD5 entries in parallel...")
         details_list = await batch_get_md5_details(md5_list, proxy)
         details_by_md5 = {d["md5"]: d for d in details_list}
 
-        for i, entry in enumerate(all_md5_entries[:10]):
+        for i, entry in enumerate(all_md5_entries):
             md5 = entry["md5"]
-            task_store.add_log(task_id, f"AA [{i+1}/{min(len(all_md5_entries), 10)}]: trying MD5={md5}")
+            task_store.add_log(task_id, f"AA [{i+1}/{len(all_md5_entries)}]: trying MD5={md5}")
 
             # 获取 MD5 详情（zlib_id, title, isbn 等）
             details = details_by_md5.get(md5, {"md5": md5})
@@ -1494,84 +1472,6 @@ async def _download_via_aa_and_stacks(
         return None
 
 
-async def _download_via_libgen(
-    task_id: str, report: Dict[str, Any], config: Dict[str, Any],
-    title: str, isbn: str, authors: List[str], proxy: str,
-) -> Optional[str]:
-    """LibGen 兜底下载（所有其他方式失败后的最后选择）"""
-    task_store.add_log(task_id, "LibGen: trying as last resort...")
-    await _emit_progress(task_id, "download_pages", 80, "LibGen: 搜索中...", "")
-    try:
-        import libgen_api_enhanced as lg
-        from libgen_api_enhanced import LibgenSearch
-        searcher = LibgenSearch()
-    except ImportError:
-        task_store.add_log(task_id, "LibGen: libgen-api-enhanced not installed")
-        return None
-
-    tmp_dir = report.get("tmp_dir", "")
-    if not tmp_dir:
-        return None
-
-    try:
-        filters = {}
-        search_term = ""
-        try:
-            if isbn:
-                search_term = isbn
-                filters["search_in"] = "identifier"
-            elif title:
-                search_term = title
-                if authors:
-                    search_term = f"{title} {authors[0]}"
-        except TypeError:
-            pass
-
-        if not search_term:
-            return None
-
-        results = searcher.search(search_term, search_type="title")
-        if not results or not isinstance(results, list):
-            task_store.add_log(task_id, "LibGen: no results found")
-            return None
-
-        task_store.add_log(task_id, f"LibGen: found {len(results)} results")
-        await _emit_progress(task_id, "download_pages", 85, f"LibGen: 找到 {len(results)} 个结果，下载中...", "")
-        for item in results[:5]:
-            try:
-                md5 = item.get("md5", item.get("Mirror_MD5", ""))
-                if md5:
-                    dl_urls = item.get("mirrors", item.get("Mirrors", []))
-                    if not dl_urls:
-                        dl_urls = [item.get("Mirror_1", ""), item.get("Mirror_2", "")]
-                    for dl_url in dl_urls:
-                        if not dl_url or not dl_url.startswith("http"):
-                            continue
-                        try:
-                            import requests as _req
-                            hdrs = {"User-Agent": "Mozilla/5.0"}
-                            kwargs = {"timeout": 60, "headers": hdrs, "verify": False}
-                            if proxy:
-                                kwargs["proxies"] = {"http": proxy, "https": proxy}
-                            resp = _req.get(dl_url, **kwargs)
-                            if resp.status_code == 200 and len(resp.content) > 1024:
-                                ext = item.get("extension", "pdf")
-                                filepath = os.path.join(tmp_dir, f"{md5}.{ext}")
-                                with open(filepath, "wb") as f:
-                                    f.write(resp.content)
-                                task_store.add_log(task_id, f"LibGen: downloaded {md5}.{ext} ({len(resp.content)/1024:.0f} KB)")
-                                return filepath
-                        except Exception:
-                            continue
-            except Exception:
-                continue
-
-        task_store.add_log(task_id, "LibGen: all download attempts failed")
-    except Exception as e:
-        task_store.add_log(task_id, f"LibGen: error: {str(e)[:100]}")
-    return None
-
-
 async def _wait_for_user_confirmation(
     task_id: str,
     report: Dict[str, Any],
@@ -1900,25 +1800,12 @@ async def _step_download_pages(task_id: str, task: Dict[str, Any], config: Dict[
             else:
                 task_store.add_log(task_id, "ZL: no credentials configured, skipping")
 
-    # ── 路径C：LibGen 兜底（仅本地检索时允许降级）──
-    if not downloaded and source not in ("zlibrary", "annas_archive") and config.get("libgen_enabled", True):
-        task_store.add_log(task_id, "=== Path C: LibGen (last resort) ===")
-        await _emit(task_id, "step_progress", {"step": "download_pages", "progress": 80})
-
-        libgen_path = await _download_via_libgen(
-            task_id, report, config, title, isbn, authors, proxy,
-        )
-        if libgen_path:
-            downloaded = True
-            download_source = "libgen"
-            report["download_path"] = libgen_path
-
     # ── 结果 ──
     if downloaded:
         report["download_source"] = download_source
         task_store.add_log(task_id, f"Download complete via {download_source}: {os.path.basename(report['download_path'])}")
     else:
-        task_store.add_log(task_id, "All download paths (AA/stacks → ZL → LibGen) exhausted — download failed")
+        task_store.add_log(task_id, "All download paths (AA/stacks → ZL) exhausted — download failed")
         report["download_note"] = "download failed"
 
     await _emit(task_id, "step_progress", {"step": "download_pages", "progress": 100})
@@ -2964,6 +2851,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 # Save OCR original before replacing with compressed version
                 ocr_original = report["pdf_path"] + ".ocr"
                 shutil.copy2(report["pdf_path"], ocr_original)
+                report["compressed_path"] = ocr_original
                 task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
                 os.replace(output_path, report["pdf_path"])
                 saved_pct = round((1 - after / before) * 100, 1)
@@ -3098,7 +2986,7 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                 title = report.get("title", "book")
                 safe_title = re.sub(r'[<>:"/\\|?*]', '_', title).strip()[:80]
                 ocr_done = report.get("ocr_done")
-                bw_done = ocr_done and config.get("pdf_compress", False)
+                bw_done = bool(report.get("compressed_path")) and os.path.exists(report.get("compressed_path", ""))
                 if bw_done:
                     ocr_suffix = "_ocr_bw"
                 elif ocr_done:
@@ -3147,7 +3035,7 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
     return report
 
 
-async def run_pipeline(task_id: str):
+async def run_pipeline(task_id: str) -> None:
     config = get_config()
     task = task_store.get(task_id)
     if not task:

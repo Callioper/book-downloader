@@ -1,6 +1,6 @@
 # ==== flaresolverr.py ====
 # 职责：FlareSolverr进程管理和CloudFlare绕过下载
-# 入口函数：start_flaresolverr(), stop_flaresolverr(), check_flaresolverr(), download_via_flaresolverr()
+# 入口函数：start_flaresolverr(), stop_flaresolverr(), check_flaresolverr()
 # 依赖：无
 # 注意：管理全局进程实例，支持自动查找和启动FlareSolverr
 
@@ -35,7 +35,7 @@ def _flare_url(port: Optional[int] = None, endpoint: str = "/v1") -> str:
 _FS_PORT = 8191
 
 
-def set_flare_port(port: int):
+def set_flare_port(port: int) -> None:
     """Set the FlareSolverr port for all subsequent calls (no config needed)"""
     global _FS_PORT
     _FS_PORT = port
@@ -250,60 +250,6 @@ def stop_flaresolverr():
             except Exception as e2:
                 logger.warning(f"Failed to kill FlareSolverr during stop: {e2}")
         _flare_process = None
-
-
-async def download_via_flaresolverr(
-    base_url: str,
-    book_id: str,
-    output_dir: str,
-    proxy: str = "",
-) -> bool:
-    proxies = {"http": proxy, "https": proxy} if proxy else None
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    }
-
-    try:
-        flare_url = _flare_url()
-        session = requests.Session()
-        if proxies:
-            session.proxies.update(proxies)
-
-        payload = {
-            "cmd": "request.get",
-            "url": f"{base_url}/book/{book_id}",
-            "maxTimeout": 60000,
-            "returnOnlyCookies": False,
-        }
-
-        r = session.post(flare_url, json=payload, timeout=70)
-        if r.status_code == 200:
-            data = r.json()
-            if data.get("status") == "ok":
-                content = data.get("solution", {}).get("response", "")
-                if content:
-                    index_path = os.path.join(output_dir, "index.html")
-                    with open(index_path, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    return True
-
-        direct_r = requests.get(
-            f"{base_url}/book/{book_id}",
-            headers=headers,
-            timeout=30,
-            proxies=proxies,
-        )
-        if direct_r.status_code == 200:
-            index_path = os.path.join(output_dir, "index.html")
-            with open(index_path, "w", encoding="utf-8") as f:
-                f.write(direct_r.text)
-            return True
-
-        return False
-    except Exception as e:
-        logger.error(f"Failed to download via FlareSolverr: {e}")
-        return False
 
 
 async def get_page_content(url: str, proxy: str = "") -> Optional[str]:

@@ -1,12 +1,14 @@
+import { API_BASE } from '../constants'
 import type { TaskReport } from '../types'
 
 interface TaskReportProps {
   report: TaskReport
   finishedDir?: string
   createdAt?: number
+  taskId?: string
 }
 
-export default function TaskReport({ report, finishedDir, createdAt }: TaskReportProps) {
+export default function TaskReport({ report, finishedDir, createdAt, taskId }: TaskReportProps) {
   if (!report || Object.keys(report).length === 0) {
     return (
       <div className="text-xs text-gray-400 p-4 text-center">
@@ -68,13 +70,25 @@ export default function TaskReport({ report, finishedDir, createdAt }: TaskRepor
                 {pdfPath && (
                   <tr className="border-b border-gray-50">
                     <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">PDF路径</td>
-                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">{pdfPath}</td>
+                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
+                      {taskId ? (
+                        <a href={`${API_BASE}/tasks/${taskId}/download?type=original`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{pdfPath}</a>
+                      ) : (
+                        pdfPath
+                      )}
+                    </td>
                   </tr>
                 )}
                 {outputFile && (
                   <tr className="border-b border-gray-50">
                     <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">OCR路径</td>
-                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">{outputFile}</td>
+                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
+                      {taskId ? (
+                        <a href={`${API_BASE}/tasks/${taskId}/download?type=ocr`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{outputFile}</a>
+                      ) : (
+                        outputFile
+                      )}
+                    </td>
                   </tr>
                 )}
                 {report.completed_at && (

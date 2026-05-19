@@ -43,14 +43,6 @@ FLARE_MIRROR_URLS = [
     "https://github.moeyy.xyz/https://github.com/FlareSolverr/FlareSolverr/releases/download/v3.4.6/flaresolverr_windows_x64.zip",
 ]
 
-_flare_install_state: Dict[str, Any] = {
-    "downloading": False,
-    "progress": 0.0,
-    "status": "idle",
-    "error": None,
-    "path": None,
-}
-
 _flare_dl_state: Dict[str, Any] = {
     "downloaded": 0,
     "total": 0,
@@ -315,7 +307,7 @@ async def search_books(
     fuzzies: Optional[List[str]] = Query(default=None, alias="fuzzies[]"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-):
+) -> Dict[str, Any]:
     config = get_config()
     db_path = config.get("ebook_db_path", "")
     search_engine.set_db_dir(db_path)
@@ -408,7 +400,7 @@ async def get_config_endpoint():
 
 
 @router.post("/config")
-async def update_config_endpoint(data: Dict[str, Any]):
+async def update_config_endpoint(data: Dict[str, Any]) -> Dict[str, Any]:
     updated = update_config(data)
     safe = dict(updated)
     safe.pop("zlib_password", None)
@@ -452,7 +444,7 @@ async def config_status():
 
 
 @router.post("/upload-cookies")
-async def upload_cookies(file: UploadFile = File(...)):
+async def upload_cookies(file: UploadFile = File(...)) -> Dict[str, Any]:
     content = await file.read()
     data = json.loads(content)
     config = get_config()
@@ -618,7 +610,7 @@ async def service_status():
 
 
 @router.post("/check-proxy")
-async def check_proxy(body: ProxyRequest):
+async def check_proxy(body: ProxyRequest) -> Dict[str, Any]:
     proxy_url = body.http_proxy or get_config().get("http_proxy", "")
     if not proxy_url:
         return {"ok": True, "message": "未设置代理，使用本机网络"}
@@ -634,7 +626,7 @@ async def check_proxy(body: ProxyRequest):
 
 
 @router.post("/check-ai-vision")
-async def check_ai_vision(body: Dict[str, Any]):
+async def check_ai_vision(body: Dict[str, Any]) -> Dict[str, Any]:
     """测试 AI Vision 模型连通性。"""
     endpoint = body.get("endpoint", "")
     model = body.get("model", "")
@@ -788,7 +780,7 @@ async def check_ai_vision(body: Dict[str, Any]):
 
 
 @router.post("/fetch-models")
-async def fetch_models(body: Dict[str, Any]):
+async def fetch_models(body: Dict[str, Any]) -> Dict[str, Any]:
     """代理拉取提供商可用模型列表，避免浏览器 CORS 限制。"""
     endpoint = body.get("endpoint", "")
     api_key = body.get("api_key", "")
@@ -885,7 +877,7 @@ async def fetch_models(body: Dict[str, Any]):
 
 
 @router.post("/fetch-llm-models")
-async def fetch_llm_models(req: Request):
+async def fetch_llm_models(req: Request) -> Dict[str, Any]:
     """Fetch available models from the LLM OCR endpoint."""
     import httpx
     body = await req.json()
@@ -905,7 +897,7 @@ async def fetch_llm_models(req: Request):
 
 
 @router.post("/check-llm-ocr")
-async def check_llm_ocr(req: Request):
+async def check_llm_ocr(req: Request) -> Dict[str, Any]:
     """Test LLM OCR endpoint connectivity."""
     import httpx
     body = await req.json()
@@ -924,7 +916,7 @@ async def check_llm_ocr(req: Request):
         return {"ok": False, "message": str(e)[:200]}
 
 
-async def _try_fetch_models(client, endpoint: str):
+async def _try_fetch_models(client: "httpx.AsyncClient", endpoint: str) -> Tuple[Dict[str, Any], str]:
     """Try GET /v1/models. If that fails, retry without /v1 (auto-correct endpoint)."""
     for suffix in ("/v1/models", "/models"):
         url = f"{endpoint}{suffix}"
@@ -938,7 +930,7 @@ async def _try_fetch_models(client, endpoint: str):
 
 
 @router.post("/check-mineru")
-async def check_mineru(req: Request):
+async def check_mineru(req: Request) -> Dict[str, Any]:
     """Test MinerU API connectivity."""
     import httpx
     body = await req.json()
@@ -959,7 +951,7 @@ async def check_mineru(req: Request):
 
 
 @router.post("/check-paddleocr-online")
-async def check_paddleocr_online(req: Request):
+async def check_paddleocr_online(req: Request) -> Dict[str, Any]:
     """Test PaddleOCR-VL-1.5 API connectivity."""
     import httpx
     body = await req.json()
@@ -983,7 +975,7 @@ async def check_paddleocr_online(req: Request):
 
 
 @router.post("/check-proxy-sources")
-async def check_proxy_sources(body: ProxyRequest):
+async def check_proxy_sources(body: ProxyRequest) -> Dict[str, Any]:
     proxy_url = body.http_proxy or get_config().get("http_proxy", "")
     results = {}
     details = {}
@@ -1073,7 +1065,7 @@ async def check_proxy_sources(body: ProxyRequest):
 
 
 @router.post("/zlib-fetch-tokens")
-async def zlib_fetch_tokens(body: ZLibFetchTokensRequest):
+async def zlib_fetch_tokens(body: ZLibFetchTokensRequest) -> Dict[str, Any]:
     try:
         from engine.zlib_downloader import ZLibDownloader
         config = get_config()
@@ -1122,7 +1114,7 @@ async def check_proxy_status():
 
 
 @router.get("/check-ocr")
-async def check_ocr(engine: str = Query(default="")):
+async def check_ocr(engine: str = Query(default="")) -> Dict[str, Any]:
     config = get_config()
     if not engine:
         engine = config.get("ocr_engine", "tesseract")
@@ -1208,7 +1200,7 @@ class StacksLoginRequest(BaseModel):
 
 
 @router.post("/check-stacks")
-async def check_stacks_login(req: StacksLoginRequest):
+async def check_stacks_login(req: StacksLoginRequest) -> Dict[str, Any]:
     """Test stacks login with username/password."""
     if not req.url:
         return {"ok": False, "message": "URL 为空"}
@@ -1258,7 +1250,7 @@ def _pip_install_cmd() -> List[str]:
 
 
 @router.post("/install-ocr")
-async def install_ocr(body: InstallOCRRequest):
+async def install_ocr(body: InstallOCRRequest) -> Dict[str, Any]:
     engine = body.engine
     try:
         if engine == "tesseract":
@@ -1403,7 +1395,7 @@ async def install_ocr(body: InstallOCRRequest):
 
 
 @router.post("/install-tesseract-lang")
-async def install_tesseract_lang(lang: str = Query(default="chi_sim")):
+async def install_tesseract_lang(lang: str = Query(default="chi_sim")) -> Dict[str, Any]:
     """Download and install Tesseract language pack (e.g. chi_sim)."""
     tess_dir = r"C:\Program Files\Tesseract-OCR\tessdata"
     dest = os.path.join(tess_dir, f"{lang}.traineddata")
@@ -1433,7 +1425,7 @@ async def install_tesseract_lang(lang: str = Query(default="chi_sim")):
 
 
 @router.post("/install-flare")
-async def install_flare(body: InstallFlareRequest):
+async def install_flare(body: InstallFlareRequest) -> Dict[str, Any]:
     global _flare_dl_state
     try:
         custom_path = body.install_path
@@ -1594,7 +1586,7 @@ async def install_flare_complete():
 
 
 @router.post("/check-flare")
-async def check_flare(body: Optional[Dict[str, Any]] = None):
+async def check_flare(body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     try:
         from engine.flaresolverr import check_flaresolverr, find_flaresolverr_exe
         from config import get_config, update_config
@@ -1645,7 +1637,7 @@ class ConfigureFlarePathRequest(BaseModel):
 
 
 @router.post("/configure-flare-path")
-async def configure_flare_path(body: ConfigureFlarePathRequest):
+async def configure_flare_path(body: ConfigureFlarePathRequest) -> Dict[str, Any]:
     """Configure a custom FlareSolverr path by updating config."""
     try:
         path = body.path.strip()
