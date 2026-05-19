@@ -737,7 +737,7 @@ def _search_db_by_ss(ss_code: str, db_path: str) -> Optional[Dict[str, Any]]:
         from search_engine import SearchEngine
         se = SearchEngine()
         se.set_db_dir(db_path)
-        result = se.search(field="ss_code", query=ss_code, page=1, page_size=1)
+        result = se.search(field="sscode", query=ss_code, page=1, page_size=1)
         books = result.get("books", [])
         if books:
             return books[0]
