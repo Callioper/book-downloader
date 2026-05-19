@@ -2925,6 +2925,11 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                     )
 
                 from engine.pdf_bw_compress import bw_compress_pdf_blocking
+                # Save OCR original BEFORE compression attempt (preserved regardless of outcome)
+                ocr_original = report["pdf_path"] + ".ocr"
+                if not os.path.exists(ocr_original):
+                    shutil.copy2(report["pdf_path"], ocr_original)
+                    task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
                 before, after = await loop.run_in_executor(
                     None,
                     bw_compress_pdf_blocking,
@@ -2934,11 +2939,8 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                     128,
                     _compress_progress,
                 )
-                # Save OCR original before replacing with compressed version
-                ocr_original = report["pdf_path"] + ".ocr"
-                shutil.copy2(report["pdf_path"], ocr_original)
-                task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
                 os.replace(output_path, report["pdf_path"])
+                report["compressed_path"] = report["pdf_path"]
                 saved_pct = round((1 - after / before) * 100, 1)
                 task_store.add_log(
                     task_id,
@@ -2947,7 +2949,8 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 )
             except Exception as e:
                 task_store.add_log(task_id, f"BW compression failed: {str(e)[:200]}")
-                task_store.add_log(task_id, "BW压缩失败不影响输出——OCR生成的PDF已保留原始质量，可在设置中关闭「PDF压缩」跳过此步骤")
+                task_store.add_log(task_id, "BW压缩失败不影响输出——OCR生成的PDF已保留原始质量，已为您保留OCR版本")
+                # Do NOT set compressed_path on failure
                 try:
                     bw_file = report["pdf_path"] + ".bw"
                     if os.path.exists(bw_file):
@@ -2962,9 +2965,6 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
             report["ocr_path"] = _ocr_copy
         else:
             report["ocr_path"] = report.get("pdf_path", "")
-    _compressed = report.get("pdf_path", "")
-    if config.get("pdf_compress", False) and os.path.exists(_compressed):
-        report["compressed_path"] = _compressed
 
     return report
 
