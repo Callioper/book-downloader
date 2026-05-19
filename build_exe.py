@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -9,15 +10,21 @@ def build():
 
     frontend_dir = project_root / "frontend"
     if frontend_dir.exists() and (frontend_dir / "package.json").exists():
-        print("[1/3] Building frontend...")
+        print("[1/4] Building frontend...")
         subprocess.run(["npm", "run", "build"], cwd=str(frontend_dir), check=True)
     else:
-        print("[1/3] Skipping frontend build (no frontend/package.json)")
+        print("[1/4] Skipping frontend build (no frontend/package.json)")
 
     backend_dir = project_root / "backend"
     spec_file = backend_dir / "book-downloader.spec"
 
-    print("[2/3] Installing backend requirements...")
+    # Clean PyInstaller build cache to prevent stale code in exe
+    build_cache = backend_dir / "build"
+    if build_cache.exists():
+        print("[2/4] Cleaning PyInstaller build cache...")
+        shutil.rmtree(str(build_cache))
+
+    print("[3/4] Installing backend requirements...")
     req_file = backend_dir / "requirements.txt"
     if req_file.exists():
         subprocess.run(
@@ -25,7 +32,7 @@ def build():
             check=True,
         )
 
-    print("[3/3] Building executable with PyInstaller...")
+    print("[4/4] Building executable with PyInstaller...")
     subprocess.run(
         [
             sys.executable, "-m", "PyInstaller",
