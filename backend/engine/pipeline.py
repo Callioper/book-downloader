@@ -2934,16 +2934,20 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
             task_store.update(task_id, {"_toc_done": False})
 
     if bookmark and pdf_path and os.path.exists(pdf_path):
-        task_store.add_log(task_id, "Applying bookmark to PDF...")
-        try:
-            from addbookmark.bookmark_injector import inject_bookmarks
-            inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
-            task_store.add_log(task_id, "Bookmark applied to PDF")
-            report["bookmark_applied"] = True
-        except ImportError:
-            task_store.add_log(task_id, "Bookmark injector module not available")
-        except Exception as e:
-            task_store.add_log(task_id, f"Bookmark apply error: {e}")
+        # Skip if already injected before OCR (Step 3 pre-injection)
+        if report.get("bookmark_applied") and not task.get("bookmark"):
+            task_store.add_log(task_id, "Bookmark already injected before OCR, skipping")
+        else:
+            task_store.add_log(task_id, "Applying bookmark to PDF...")
+            try:
+                from addbookmark.bookmark_injector import inject_bookmarks
+                inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
+                task_store.add_log(task_id, "Bookmark applied to PDF")
+                report["bookmark_applied"] = True
+            except ImportError:
+                task_store.add_log(task_id, "Bookmark injector module not available")
+            except Exception as e:
+                task_store.add_log(task_id, f"Bookmark apply error: {e}")
 
     await _emit(task_id, "step_progress", {"step": "bookmark", "progress": 100})
     return report
@@ -3113,6 +3117,20 @@ async def run_pipeline(task_id: str) -> None:
                 report = await step_func(task_id, task, config, report)
                 if report is None:
                     report = {}
+
+                # Inject bookmarks right after download (Step 3), before OCR changes page structure
+                if step_name == "download_pages":
+                    pdf_path = report.get("pdf_path", "")
+                    bookmark = report.get("bookmark", "") or report.get("shukui_toc", "")
+                    if bookmark and pdf_path and os.path.exists(pdf_path):
+                        try:
+                            from addbookmark.bookmark_injector import inject_bookmarks
+                            task_store.add_log(task_id, "Injecting bookmarks before OCR (page labels intact)...")
+                            inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
+                            report["bookmark_applied"] = True
+                            task_store.add_log(task_id, "Bookmarks pre-injected before OCR")
+                        except Exception as e:
+                            task_store.add_log(task_id, f"Pre-OCR bookmark injection failed: {e}")
 
             task_store.update(task_id, {"report": report, "progress": int(((step_idx + 1) / 7) * 100)})
             await _emit(task_id, "task_update", {
