@@ -903,7 +903,7 @@ async def _download_via_aa_and_stacks(
     # Step A: 搜索 AA 获取所有 MD5 条目
     search_queries = []
     if ss_code:
-        search_queries.append(("SS", ss_code))
+        search_queries.append(("SS", f"{ss_code} duxiu"))
     if isbn:
         search_queries.append(("ISBN", isbn))
     if title and not search_queries:
@@ -918,8 +918,6 @@ async def _download_via_aa_and_stacks(
         if entries:
             task_store.add_log(task_id, f"AA: found {len(entries)} MD5 entries via {qtype}")
             all_md5_entries.extend(entries)
-            if len(all_md5_entries) >= 5:
-                break
         await asyncio.sleep(1)
 
     if not all_md5_entries:
@@ -989,12 +987,12 @@ async def _download_via_aa_and_stacks(
                 task_store.add_log(task_id, f"AA: stacks login error: {e}")
 
         # Step C: 批量获取所有 MD5 详情（并行），然后遍历
-        md5_list = [e["md5"] for e in all_md5_entries[:10]]
+        md5_list = [e["md5"] for e in all_md5_entries]
         task_store.add_log(task_id, f"AA: fetching details for {len(md5_list)} MD5 entries in parallel...")
         details_list = await batch_get_md5_details(md5_list, proxy)
         details_by_md5 = {d["md5"]: d for d in details_list}
 
-        for i, entry in enumerate(all_md5_entries[:10]):
+        for i, entry in enumerate(all_md5_entries):
             md5 = entry["md5"]
             task_store.add_log(task_id, f"AA [{i+1}/{min(len(all_md5_entries), 10)}]: trying MD5={md5}")
 

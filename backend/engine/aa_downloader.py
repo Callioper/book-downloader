@@ -80,7 +80,7 @@ async def search_aa(
     query: str,
     proxy: str = "",
     base_url: str = AA_BASE_URLS[0],
-    max_results: int = 30,
+    max_results: int = 100,
 ) -> List[Dict[str, Any]]:
     """
     搜索 Anna's Archive，只提取 MD5 列表（标题匹配交给 get_md5_details）。
