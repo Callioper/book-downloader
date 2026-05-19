@@ -4,7 +4,7 @@
   "download_dir": "",
   "finished_dir": "",
   "tmp_dir": "",
-  "stacks_base_url": "http://localhost:7788",
+  "stacks_base_url": "http://127.0.0.1:7788",
   "stacks_api_key": "",
   "stacks_username": "",
   "stacks_password": "",

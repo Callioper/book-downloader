@@ -21,6 +21,10 @@ def is_linux() -> bool:
     return sys.platform.startswith("linux")
 
 
+def is_docker() -> bool:
+    return os.environ.get("DOCKER", "").lower() == "true"
+
+
 # ── Config / App Data Directory ──
 
 def get_app_data_dir(app_name: str = "ebook-pdf-downloader") -> Path:

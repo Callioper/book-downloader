@@ -939,7 +939,7 @@ async def _download_via_aa_and_stacks(
     # Step B: 尝试 stacks 下载（优先 — 仅当 Docker 服务运行）
     # （stacks 是 Anna's Archive 下载管理器，与 FlareSolverr 不同）
     stacks_api_key = config.get("stacks_api_key", "") or get_stacks_api_key()
-    stacks_url = config.get("stacks_base_url", "http://localhost:7788")
+    stacks_url = config.get("stacks_base_url", "http://127.0.0.1:7788")
     stacks_timeout = config.get("stacks_timeout", 300)
     use_stacks = bool(stacks_api_key)
 

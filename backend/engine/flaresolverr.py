@@ -28,7 +28,8 @@ def _get_flare_port(config: Optional[Dict[str, Any]] = None) -> int:
 def _flare_url(port: Optional[int] = None, endpoint: str = "/v1") -> str:
     if port is None:
         port = _FS_PORT
-    return f"http://localhost:{port}{endpoint}"
+    host = "flaresolverr" if os.environ.get("DOCKER", "").lower() == "true" else "127.0.0.1"
+    return f"http://{host}:{port}{endpoint}"
 
 
 # Module-level port (overridden by set_flare_port)
@@ -252,7 +253,7 @@ def stop_flaresolverr():
         _flare_process = None
 
 async def get_page_content(url: str, proxy: str = "") -> Optional[str]:
-    flare_url = "http://localhost:8191/v1"
+    flare_url = _flare_url()
 
     try:
         payload = {
