@@ -78,7 +78,7 @@ class SearchEngine:
     def search(self, field: str = "title", query: str = "", page: int = 1, page_size: int = 20,
                fuzzy: bool = True, **kwargs) -> Dict[str, Any]:
         field_map = {"title": "title", "author": "author", "publisher": "publisher",
-                     "isbn": "ISBN", "sscode": "SS_code"}
+                     "isbn": "ISBN", "sscode": "SS_code", "ss_code": "SS_code"}
         col = field_map.get(field, "title")
         pattern = "%" + query.replace("%", "%%") + "%"
 
