@@ -31,6 +31,9 @@ def _detect_offset(pdf_path: str, bookmark_text: str) -> int:
         for line in lines:
             parts = line.split('\t')
             if len(parts) >= 2:
+                # Skip TOC page markers (level=-1) which use absolute PDF page numbers
+                if len(parts) >= 3 and parts[2].strip() == '-1':
+                    continue
                 try:
                     anchor_shukui = int(parts[1].strip())
                     break
