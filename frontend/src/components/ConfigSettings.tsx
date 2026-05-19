@@ -435,6 +435,17 @@ export default function ConfigSettings() {
       setAaProxyStatus(comp.sources.ok ? 'green' : 'red')
       setZlProxyStatus(comp.sources.ok ? 'green' : 'red')
     }
+    // OCR (from system-status: covers current engine only)
+    if (comp.ocr) {
+      setOcrStatus(comp.ocr.ok ? 'green' : 'red')
+      setOcrMsg(comp.ocr.detail || (comp.ocr.ok ? '已安装' : '未检测到'))
+      setOcrChecking(false)
+    }
+    // AI Vision
+    if (comp.ai_vision) {
+      setAiVisionTest(comp.ai_vision.ok ? 'ok' : 'fail')
+      setAiVisionMsg(comp.ai_vision.detail || '')
+    }
   }, [sysStatus])
 
   const handleCheckUpdate = async () => {
@@ -468,23 +479,12 @@ export default function ConfigSettings() {
       const res = await fetch('/api/v1/config-status')
       const data = await res.json()
       if (!mountedRef.current) return
-      const auto = data._auto || {}
-      delete data._auto
 
       setConfig(data)
       const merged = { ...DEFAULT_CONFIG, ...data }
       setForm(merged)
 
-      // Apply auto-detect results from consolidated response
-      if (auto.database?.ok) {
-        setDbStatus('green')
-        if (auto.database.databases?.length > 0) setDbDetecting(false)
-      }
-      if (auto.ocr?.ok) {
-        const langs = auto.ocr.languages || []
-        setOcrMsg(langs.length ? `${langs.length} languages` : '已安装')
-        setOcrChecking(false)
-      }
+      // _auto fields now handled by system-status context
     } catch (e) {
       if (mountedRef.current) setConfig(DEFAULT_CONFIG)
     } finally {
@@ -545,84 +545,13 @@ export default function ConfigSettings() {
     })
   }, [config])
 
-  // Restore Z-Lib login state from stored credentials
-  useEffect(() => {
-    if (!config || !form.zlib_email || !form.zlib_password) return
-    if (zlibChecked) return // already manually checked
-    const restoreZlib = async () => {
-      try {
-        const res = await fetch('/api/v1/check-zlib')
-        const data = await res.json()
-        if (!mountedRef.current) return
-        if (data.ok) {
-          setZlibConnected(true)
-          setZlibMsg('已连接')
-          setZlibChecked(true)
-          if (data.balance) setZlibBalance(data.balance)
-        }
-      } catch (e) { }
-    }
-    restoreZlib()
-  }, [config, form.zlib_email, form.zlib_password, zlibChecked])
+  // ZLib/DB/Proxy/Sources status synced from system-status context above
 
-  // Auto-detect Tesseract + OCRmyPDF on mount
+  // Auto-detect Tesseract + OCRmyPDF on mount (context only covers current engine)
   useEffect(() => {
     if (!config) return
     handleDetectOcrEngine('tesseract')
     handleDetectOcrEngine('ocrmypdf')
-  }, [config])
-
-  // Auto-detect database on mount
-  useEffect(() => {
-    if (!config) return
-    checkDbConnectivity()
-  }, [config])
-
-  // Restore proxy state from stored config
-  useEffect(() => {
-    if (!config || !form.http_proxy) return
-    if (proxyChecked) return // already manually checked
-    const restoreProxy = async () => {
-      try {
-        const res = await fetch('/api/v1/check-proxy-status')
-        const data = await res.json()
-        if (!mountedRef.current) return
-        if (data.ok) {
-          setProxyStatus('green')
-          setProxyMsg(data.message || '代理可用')
-        } else {
-          setProxyStatus('red')
-          setProxyMsg(data.message || '代理不可用')
-        }
-        setProxyChecked(true)
-      } catch (e) { }
-    }
-    restoreProxy()
-  }, [config, form.http_proxy, proxyChecked])
-
-  // Restore source connectivity state (runs once on mount)
-  const sourceRestoredRef = useRef(false)
-  useEffect(() => {
-    if (!config || sourceRestoredRef.current) return
-    sourceRestoredRef.current = true
-    const restoreSourceStatus = async () => {
-      try {
-        const res = await fetch('/api/v1/check-proxy-sources', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ http_proxy: form.http_proxy || '' }),
-        })
-        const data = await res.json()
-        if (!mountedRef.current) return
-        const results = data.results || {}
-        const details = data.details || {}
-        setAaProxyStatus(results.annas_archive ? 'green' : 'red')
-        setZlProxyStatus(results.zlibrary ? 'green' : 'red')
-        setAaProxyDetail(details.annas_archive || '')
-        setZlProxyDetail(details.zlibrary || '')
-      } catch (e) { }
-    }
-    restoreSourceStatus()
   }, [config])
 
   const checkFlare = useCallback(async () => {
@@ -643,15 +572,6 @@ export default function ConfigSettings() {
     }
   }, [])
 
-  const flareAutoRef = useRef(false)
-  useEffect(() => {
-    if (flareAutoRef.current) return
-    flareAutoRef.current = true
-    checkFlare()
-  }, [checkFlare])
-
-
-
 
   // Update OCR header status when engine selection or engine states change
   useEffect(() => {
@@ -662,35 +582,6 @@ export default function ConfigSettings() {
       setOcrMsg(info.msg || (info.installed ? '已安装' : '未检测到'))
     }
   }, [form.ocr_engine, ocrEngines])
-
-  // Auto-detect online API connectivity on startup
-  const autoOnlineRef = useRef(false)
-  useEffect(() => {
-    if (!config || autoOnlineRef.current) return
-    autoOnlineRef.current = true
-    const cfg = config
-    const check = async () => {
-      if (cfg.mineru_token) {
-        setOnlineTesting(prev => ({ ...prev, mineru: true }))
-        try {
-          const r = await fetch('/api/v1/check-mineru', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: cfg.mineru_token }) })
-          const d = await r.json()
-          if (mountedRef.current) setOnlineEngineStatus(prev => ({ ...prev, mineru: d.ok ? 'ok' : 'fail' }))
-        } catch { if (mountedRef.current) setOnlineEngineStatus(prev => ({ ...prev, mineru: 'fail' })) }
-        if (mountedRef.current) setOnlineTesting(prev => ({ ...prev, mineru: false }))
-      }
-      if (cfg.paddleocr_online_token) {
-        setOnlineTesting(prev => ({ ...prev, paddleocr: true }))
-        try {
-          const r = await fetch('/api/v1/check-paddleocr-online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: cfg.paddleocr_online_token }) })
-          const d = await r.json()
-          if (mountedRef.current) setOnlineEngineStatus(prev => ({ ...prev, paddleocr: d.ok ? 'ok' : 'fail' }))
-        } catch { if (mountedRef.current) setOnlineEngineStatus(prev => ({ ...prev, paddleocr: 'fail' })) }
-        if (mountedRef.current) setOnlineTesting(prev => ({ ...prev, paddleocr: false }))
-      }
-    }
-    check()
-  }, [config])
 
   const checkOcr = useCallback(async (engine?: string) => {
     setOcrChecking(true)

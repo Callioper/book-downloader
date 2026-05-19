@@ -121,18 +121,17 @@ export default function Layout() {
   useEffect(() => {
     const init = async () => {
       const tasks = [
-        // 1. Theme
+        // 1. Config + Theme (single fetch, reused below)
         fetch('/api/v1/config')
           .then(r => r.json())
           .then(cfg => {
             const theme = cfg.theme || 'auto'
             localStorage.setItem('theme', theme)
-            const cleanup = applyTheme(theme)
-            return cleanup
+            applyTheme(theme)
           })
           .catch(() => {}),
 
-        // 2. System status
+        // 2. System status (includes database, zlib, stacks auto-login, flare, proxy, sources, ocr, ai_vision)
         fetch('/api/v1/system-status')
           .then(r => r.json())
           .then(data => { setSysStatus(data); sysCheckedRef.current = true })
@@ -159,26 +158,6 @@ export default function Layout() {
             }
           })
           .catch(() => { setCheckResult('检查失败') }),
-
-        // 4. Stacks auto-login
-        fetch('/api/v1/config')
-          .then(r => r.json())
-          .then(cfg => {
-            const url = cfg.stacks_base_url || 'http://localhost:7788'
-            const uname = cfg.stacks_username || ''
-            const passwd = cfg.stacks_password || ''
-            if (!uname || !passwd) return
-            return fetch('/api/v1/check-stacks', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url, username: uname, password: passwd }),
-            })
-          })
-          .then(r => r?.json())
-          .then(d => {
-            if (d?.ok) console.log('[auto-login] Stacks login OK')
-          })
-          .catch(() => {}),
       ]
 
       const timeout = new Promise<void>(resolve => {

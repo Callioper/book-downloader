@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { SectionProps } from './types'
 import { API_BASE } from '../../constants'
 import { useSystemStatus } from '../../contexts/SystemStatusContext'
@@ -128,25 +128,7 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
     }
   }, [form.zlib_email, form.zlib_password, mountedRef])
 
-  // Restore Z-Lib login state
-  useEffect(() => {
-    if (!form.zlib_email || !form.zlib_password) return
-    if (zlibChecked) return
-    const restoreZlib = async () => {
-      try {
-        const res = await fetch('/api/v1/check-zlib')
-        const data = await res.json()
-        if (!mountedRef.current) return
-        if (data.ok) {
-          setZlibConnected(true)
-          setZlibMsg('已连接')
-          setZlibChecked(true)
-          if (data.balance) setZlibBalance(data.balance)
-        }
-      } catch (e) { }
-    }
-    restoreZlib()
-  }, [form.zlib_email, form.zlib_password, zlibChecked, mountedRef])
+  // ZLib status synced from system-status context
 
   // --- FlareSolverr ---
   const checkFlare = useCallback(async () => {
@@ -167,12 +149,7 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
     }
   }, [mountedRef])
 
-  const flareAutoRef = useRef(false)
-  useEffect(() => {
-    if (flareAutoRef.current) return
-    flareAutoRef.current = true
-    checkFlare()
-  }, [checkFlare])
+  // FlareSolverr status synced from system-status context
 
   // --- Proxy ---
   const handleCheckProxy = useCallback(async () => {
@@ -205,27 +182,7 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
     }
   }, [form.http_proxy, mountedRef])
 
-  // Restore proxy state
-  useEffect(() => {
-    if (!form.http_proxy) return
-    if (proxyChecked) return
-    const restoreProxy = async () => {
-      try {
-        const res = await fetch('/api/v1/check-proxy-status')
-        const data = await res.json()
-        if (!mountedRef.current) return
-        if (data.ok) {
-          setProxyStatus('green')
-          setProxyMsg(data.message || '代理可用')
-        } else {
-          setProxyStatus('red')
-          setProxyMsg(data.message || '代理不可用')
-        }
-        setProxyChecked(true)
-      } catch (e) { }
-    }
-    restoreProxy()
-  }, [form.http_proxy, proxyChecked, mountedRef])
+  // Proxy status synced from system-status context
 
   const handleCheckProxySources = useCallback(async () => {
     try {
@@ -245,30 +202,7 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
     } catch (e) { }
   }, [form.http_proxy, mountedRef])
 
-  // Restore source connectivity
-  const sourceRestoredRef = useRef(false)
-  useEffect(() => {
-    if (sourceRestoredRef.current) return
-    sourceRestoredRef.current = true
-    const restoreSourceStatus = async () => {
-      try {
-        const res = await fetch('/api/v1/check-proxy-sources', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ http_proxy: form.http_proxy || '' }),
-        })
-        const data = await res.json()
-        if (!mountedRef.current) return
-        const results = data.results || {}
-        const details = data.details || {}
-        setAaProxyStatus(results.annas_archive ? 'green' : 'red')
-        setZlProxyStatus(results.zlibrary ? 'green' : 'red')
-        setAaProxyDetail(details.annas_archive || '')
-        setZlProxyDetail(details.zlibrary || '')
-      } catch (e) { }
-    }
-    restoreSourceStatus()
-  }, [form.http_proxy, mountedRef])
+  // Source connectivity synced from system-status context
 
   // Stacks status is synced from Layout context above (no CORS auto-detect needed)
 

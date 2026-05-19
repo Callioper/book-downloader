@@ -278,6 +278,7 @@ function OCRNetworkSection({ form, updateForm, mountedRef }: SectionProps) {
   }, [form.ocr_engine, mountedRef])
 
   // Auto-detect PaddleOCR availability on mount
+  // PaddleOCR already covered by B1's forEach loop
   useEffect(() => {
     fetch(`${API_BASE}/check-ocr?engine=paddleocr`)
       .then((r) => r.json())
@@ -296,8 +297,7 @@ function OCRNetworkSection({ form, updateForm, mountedRef }: SectionProps) {
         }))
       })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [form.ocr_engine, mountedRef])
 
   // Update OCR header status when engine selection changes
   useEffect(() => {

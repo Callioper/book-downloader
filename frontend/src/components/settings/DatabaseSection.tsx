@@ -104,22 +104,7 @@ function DatabaseSection({ form, updateForm, mountedRef }: SectionProps) {
     }
   }, [mountedRef])
 
-  // Auto-detect on mount
-  useEffect(() => {
-    const autoDetectDb = async () => {
-      try {
-        const res = await fetch('/api/v1/available-dbs')
-        const data = await res.json()
-        if (!mountedRef.current) return
-        const dbs = data.dbs || []
-        setDbNames(dbs)
-        setDbStatus(dbs.length > 0 ? 'green' : 'yellow')
-      } catch (e) {
-        if (mountedRef.current) setDbStatus('red')
-      }
-    }
-    autoDetectDb()
-  }, [mountedRef])
+  // Database status synced from system-status context
 
   return (
     <div className="space-y-3">
