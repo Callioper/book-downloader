@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { API_BASE } from '../constants'
 import { playNotificationSound } from '../utils/sound'
+import { SystemStatusContext } from '../contexts/SystemStatusContext'
 import ConfirmDownloadModal from './ConfirmDownloadModal'
 import ConfirmStepModal from './ConfirmStepModal'
 import TOCModal from './TOCModal'
@@ -399,7 +400,9 @@ export default function Layout() {
 
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Outlet context={{ openTocModal }} />
+          <SystemStatusContext.Provider value={sysStatus}>
+            <Outlet context={{ openTocModal }} />
+          </SystemStatusContext.Provider>
           <ConfirmDownloadModal />
           <ConfirmStepModal />
           {tocPdfPath && (

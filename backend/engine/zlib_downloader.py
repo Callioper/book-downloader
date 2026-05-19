@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 from curl_cffi import requests as curl_requests
 
 IMPERSONATES = ["chrome120", "chrome110", "edge101", "safari15_5"]
-MAX_RETRIES = 3
+MAX_RETRIES = 1
 Z_LIB_DOMAIN = "https://z-library.sk"
 LOGIN_URL = f"{Z_LIB_DOMAIN}/rpc.php"
 EAPI_LOGIN_URL = f"{Z_LIB_DOMAIN}/eapi/user/login"

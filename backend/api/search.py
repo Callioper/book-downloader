@@ -154,7 +154,7 @@ def _extract_aa_search_metadata(html: str) -> List[Dict[str, Any]]:
 
 def _search_annas_archive(query: str, proxy: str = "") -> List[Dict[str, Any]]:
     encoded = urllib.parse.quote(query)
-    url = f"https://annas-archive.gd/search?q={encoded}"
+    url = f"https://annas-archive.gd/search?q={encoded}&src=duxiu&ext=pdf"
     try:
         import requests as _requests
         kwargs = {
@@ -312,7 +312,9 @@ async def search_books(
     db_path = config.get("ebook_db_path", "")
     search_engine.set_db_dir(db_path)
 
-    result = search_engine.search(
+    import asyncio
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, lambda: search_engine.search(
         field=field,
         query=query,
         fuzzy=fuzzy,
@@ -322,7 +324,7 @@ async def search_books(
         fuzzies=fuzzies,
         page=page,
         page_size=page_size,
-    )
+    ))
 
     is_advanced = bool(fields or queries)
     total = result.get("total", 0)
@@ -336,9 +338,15 @@ async def search_books(
             results = []
             try:
                 md5_list = _search_annas_archive(query, proxy)
+                # Fetch MD5 detail pages in parallel (was sequential bottleneck)
+                md5_pool = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+                futures = {}
                 for item in md5_list[:5]:
+                    futures[md5_pool.submit(_fetch_md5_page_info, item["md5"], proxy)] = item
+                md5_pool.shutdown(wait=False)
+                for future, item in futures.items():
                     try:
-                        info = _fetch_md5_page_info(item["md5"], proxy)
+                        info = future.result(timeout=10)
                         # Merge: keep search-page fields, fill gaps with MD5 page info
                         merged = {**item, **{k: v for k, v in info.items() if v}}
                         if merged.get("title"):
@@ -1223,6 +1231,21 @@ async def check_stacks_login(req: StacksLoginRequest) -> Dict[str, Any]:
                 set_stacks_cached_session(session_cookie)
             return {"ok": True, "message": "登录成功"}
         return {"ok": False, "message": f"登录成功但状态查询失败: HTTP {sr.status_code}"}
+    except Exception as e:
+        return {"ok": False, "message": str(e)[:100]}
+
+
+@router.get("/check-stacks-health")
+async def check_stacks_health(url: str = "http://localhost:7788") -> Dict[str, Any]:
+    """Proxy stacks health check to avoid browser CORS issues."""
+    if not url:
+        return {"ok": False, "message": "URL 为空"}
+    try:
+        import requests as _r
+        hr = _r.get(f"{url}/api/health", timeout=5)
+        if hr.status_code == 200:
+            return {"ok": True, "message": "可连接"}
+        return {"ok": False, "message": f"HTTP {hr.status_code}"}
     except Exception as e:
         return {"ok": False, "message": str(e)[:100]}
 

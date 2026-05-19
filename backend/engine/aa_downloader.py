@@ -88,12 +88,12 @@ async def search_aa(
     """
     results = []
     encoded = query.replace(" ", "+")
-    search_url = f"{base_url}/search?q={encoded}"
+    search_url = f"{base_url}/search?q={encoded}&src=duxiu&ext=pdf"
 
     html = await _get_page_with_flare(search_url, proxy)
     if not html:
         for alt_url in AA_BASE_URLS[1:]:
-            alt_search = f"{alt_url}/search?q={encoded}"
+            alt_search = f"{alt_url}/search?q={encoded}&src=duxiu&ext=pdf"
             html = await _get_page_with_flare(alt_search, proxy)
             if html and len(html) > 500:
                 base_url = alt_url

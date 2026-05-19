@@ -125,7 +125,6 @@ export interface AppConfig {
   ebook_db_path: string
   zlib_email: string
   zlib_password: string
-  aa_membership_key: string
   ocr_engine: string
   llm_ocr_endpoint: string
   llm_ocr_model: string
