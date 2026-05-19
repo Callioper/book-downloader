@@ -243,16 +243,16 @@ async def get_md5_details(
                         result["extension"] = ext.lower()
                         break
 
-        # ---- Filepath 兜底（从 js-md5-codes-tabs-tab 中提取文件名） ----
-        if not result["title"] or not result["extension"]:
-            for a in soup.find_all('a', class_='js-md5-codes-tabs-tab'):
-                spans = a.find_all('span')
-                if len(spans) >= 2:
-                    label_text = spans[0].get_text(strip=True)
-                    if 'Filepath' in label_text:
-                        filepath_text = spans[1].get_text(strip=True)
+        # ---- Filepath 提取（从 js-md5-codes-tabs-tab 中提取完整路径） ----
+        for a in soup.find_all('a', class_='js-md5-codes-tabs-tab'):
+            spans = a.find_all('span')
+            if len(spans) >= 2:
+                label_text = spans[0].get_text(strip=True)
+                if 'Filepath' in label_text:
+                    filepath_text = spans[1].get_text(strip=True)
+                    result["filepath"] = filepath_text
+                    if not result["title"] or not result["extension"]:
                         # 从路径中提取文件名
-                        result["filepath"] = filepath_text
                         if '\\' in filepath_text:
                             filename = filepath_text.split('\\')[-1]
                         elif '/' in filepath_text:

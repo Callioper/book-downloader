@@ -994,7 +994,7 @@ async def _download_via_aa_and_stacks(
 
         for i, entry in enumerate(all_md5_entries):
             md5 = entry["md5"]
-            task_store.add_log(task_id, f"AA [{i+1}/{min(len(all_md5_entries), 10)}]: trying MD5={md5}")
+            task_store.add_log(task_id, f"AA [{i+1}/{len(all_md5_entries)}]: trying MD5={md5}")
 
             # 获取 MD5 详情（zlib_id, title, isbn 等）
             details = details_by_md5.get(md5, {"md5": md5})
