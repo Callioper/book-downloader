@@ -976,7 +976,7 @@ async def _download_via_aa_and_stacks(
             try:
                 lr = _req.post(f"{stacks_url}/login",
                                json={"username": stacks_username, "password": stacks_password},
-                               timeout=5)
+                               timeout=30)
                 if lr.status_code == 200:
                     stacks_session = lr.cookies.get("session")
                     if stacks_session:
@@ -1099,7 +1099,7 @@ async def _download_via_aa_and_stacks(
                     def _docker_cp_stacks(container_path: str) -> Optional[str]:
                         try:
                             r = subprocess.run(["docker", "ps", "--filter", "name=stacks", "--format", "{{.Names}}"],
-                                               capture_output=True, text=True, timeout=5)
+                                                capture_output=True, text=True, timeout=15)
                             cname = r.stdout.strip()
                             if not cname:
                                 return None
@@ -1125,7 +1125,7 @@ async def _download_via_aa_and_stacks(
 
                         # Step 0: 从 stacks API 获取实际下载路径
                         try:
-                            cr = _req.get(f"{url}/api/config", headers=_bearer(), timeout=5)
+                            cr = _req.get(f"{url}/api/config", headers=_bearer(), timeout=15)
                             if cr.status_code == 200:
                                 cfg = cr.json()
                                 # 尝试所有可能的 key
@@ -1183,7 +1183,7 @@ async def _download_via_aa_and_stacks(
 
                         # Step 1: 检查 recent_history 中是否已有下载完成的文件
                         try:
-                            sr = _req.get(f"{url}/api/status", headers=_bearer(), timeout=5)
+                            sr = _req.get(f"{url}/api/status", headers=_bearer(), timeout=15)
                             if sr.status_code == 200:
                                 sd = sr.json()
                                 for item in sd.get("recent_history", []):
@@ -1215,7 +1215,7 @@ async def _download_via_aa_and_stacks(
                                         return dest
                                     task_store.add_log(task_id, "AA: history file not found on disk, clearing history & retrying...")
                                     try:
-                                        _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=5)
+                                        _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=15)
                                     except Exception as e:
                                         task_store.add_log(task_id, f"AA: history clear error: {e}")
                                     break
@@ -1252,7 +1252,7 @@ async def _download_via_aa_and_stacks(
                                 if "already" in resp_text.lower() or ar.status_code in (400, 409):
                                     task_store.add_log(task_id, "AA: task already exists, clearing history & retrying...")
                                     try:
-                                        _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=5)
+                                        _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=15)
                                     except Exception as e2:
                                         task_store.add_log(task_id, f"AA: history clear error: {e2}")
                                     continue
@@ -1276,7 +1276,7 @@ async def _download_via_aa_and_stacks(
                                 return None
                             dl_info = None
                             try:
-                                sr = _req.get(f"{url}/api/status", headers=_bearer(), timeout=5)
+                                sr = _req.get(f"{url}/api/status", headers=_bearer(), timeout=15)
                                 if sr.status_code == 200:
                                     sd = sr.json()
 
@@ -1301,7 +1301,7 @@ async def _download_via_aa_and_stacks(
                                                 return dest
                                             task_store.add_log(task_id, "AA: queue completed but file not found, clearing history & re-adding task...")
                                             try:
-                                                _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=5)
+                                                _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=15)
                                             except Exception:
                                                 pass
                                             for _ in range(2):
@@ -1355,7 +1355,7 @@ async def _download_via_aa_and_stacks(
                                                 return dest
                                             task_store.add_log(task_id, f"AA: recent_history completed item {fp} but file not found, clearing history & re-adding task...")
                                             try:
-                                                _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=5)
+                                                _req.post(f"{url}/api/history/clear", headers=_xkey(), timeout=15)
                                             except Exception as e:
                                                 task_store.add_log(task_id, f"AA: history clear error: {e}")
                                             for _ in range(2):
@@ -1393,7 +1393,7 @@ async def _download_via_aa_and_stacks(
                                         # Try to extract detail from stacks' own logs
                                         log_detail_lines = []
                                         try:
-                                            lr = _req.get(f"{url}/api/logs", headers=_bearer(), timeout=5)
+                                            lr = _req.get(f"{url}/api/logs", headers=_bearer(), timeout=15)
                                             if lr.status_code == 200:
                                                 for line in lr.text.splitlines()[-20:]:
                                                     lowered = line.lower()

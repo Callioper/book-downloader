@@ -418,7 +418,7 @@ async def resolve_download_url(
         # Create FlareSolverr session
         _req.post(flare_url, json={
             "cmd": "sessions.create", "session": session_name,
-        }, timeout=5)
+        }, timeout=15)
 
         # Request /d/{md5} through FlareSolverr session
         # FlareSolverr handles Cloudflare + follows HTTP redirects
