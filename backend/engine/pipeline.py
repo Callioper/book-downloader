@@ -978,14 +978,16 @@ async def _download_via_aa_and_stacks(
                     # ── 查找 stacks 下载的文件 ──
                     def _find_stacks_file(fname: str, dl_dir: str = "", extra_paths: Optional[List[str]] = None) -> Optional[str]:
                         ssid = fname.split(".")[0] if "." in fname else ""
-                        bases = [Path.home()/"stacks"/"stacks"/"download",
-                                 Path.home()/"stacks"/"download"]
+                        bases: List[Path] = []
                         if dl_dir:
                             bases.append(Path(dl_dir))
                         if extra_paths:
                             for p in extra_paths:
                                 if p:
                                     bases.append(Path(p))
+                        if not bases:
+                            task_store.add_log(task_id, f"AA: _find_stacks_file: no search paths configured")
+                            return None
                         task_store.add_log(task_id, f"AA: _find_stacks_file(fname={fname}, ssid={ssid}) searching {len(bases)} paths...")
                         for base in bases:
                             task_store.add_log(task_id, f"AA:   checking base={base}")
@@ -1062,7 +1064,10 @@ async def _download_via_aa_and_stacks(
                         except Exception as e:
                             task_store.add_log(task_id, f"AA: could not get stacks config: {e}")
 
-                        # 始终把应用 download_dir 加入搜索（单一路径，不再加硬编码备用）
+                        # 把 stacks_download_dir 和 download_dir 加入搜索
+                        stacks_dl = config.get("stacks_download_dir", "")
+                        if stacks_dl and os.path.isdir(stacks_dl) and stacks_dl not in extra_search_paths:
+                            extra_search_paths.insert(0, stacks_dl)  # 优先
                         if dl_dir and os.path.isdir(dl_dir) and dl_dir not in extra_search_paths:
                             extra_search_paths.append(dl_dir)
 

@@ -12,6 +12,7 @@ interface AppConfig {
   stacks_base_url: string
   stacks_username: string
   stacks_password: string
+  stacks_download_dir: string
   zfile_base_url: string
   zfile_external_url: string
   zfile_storage_key: string
@@ -151,6 +152,7 @@ const DEFAULT_CONFIG: AppConfig = {
   stacks_base_url: 'http://localhost:7788',
   stacks_username: '',
   stacks_password: '',
+  stacks_download_dir: '',
   theme: 'auto',
   zfile_base_url: '',
   zfile_external_url: '',
@@ -1108,7 +1110,33 @@ export default function ConfigSettings() {
                 {visibleSecrets['stacks_key'] ? '🙈' : '👁'}
               </button>
             </div>
-            {/* Account login (unified with ZLibrary style) */}
+            {/* Stacks 下载目录 */}
+            <span className="block text-xs font-medium text-gray-600 mt-2">Stacks 下载目录</span>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                value={form.stacks_download_dir || ''}
+                onChange={(e) => setForm((prev) => ({ ...prev, stacks_download_dir: e.target.value }))}
+                placeholder="D:\Docker\stacks\download"
+                spellCheck={false}
+                className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/v1/browse-folder')
+                    const data = await res.json()
+                    if (data.path) setForm((prev) => ({ ...prev, stacks_download_dir: data.path }))
+                  } catch (e) { }
+                }}
+                className="px-2 py-1.5 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 shrink-0"
+                title="选择下载目录..."
+              >
+                ...
+              </button>
+            </div>
+            {/* Account login */}
             <span className="block text-xs font-medium text-gray-600 mt-2">账户登录</span>
             <div className="grid grid-cols-2 gap-2 mt-1">
               <input

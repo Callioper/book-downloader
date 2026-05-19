@@ -306,6 +306,31 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
           placeholder="Admin API Key（可选，填写账号密码后优先使用 session 登录）"
           className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mt-1.5"
         />
+        <span className="block text-xs font-medium text-gray-600 mt-2">Stacks 下载目录</span>
+        <div className="flex items-center gap-2 mt-1">
+          <input
+            type="text"
+            value={(form as any).stacks_download_dir || ''}
+            onChange={(e) => updateForm({ stacks_download_dir: e.target.value } as any)}
+            placeholder="D:\Docker\stacks\download"
+            spellCheck={false}
+            className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/v1/browse-folder')
+                const data = await res.json()
+                if (data.path) updateForm({ stacks_download_dir: data.path } as any)
+              } catch (e) { }
+            }}
+            className="px-2 py-1.5 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 shrink-0"
+            title="选择下载目录..."
+          >
+            ...
+          </button>
+        </div>
         <span className="block text-xs font-medium text-gray-600 mt-2">账户登录</span>
         <div className="grid grid-cols-2 gap-2 mt-1">
           <input
