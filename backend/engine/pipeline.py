@@ -1045,31 +1045,25 @@ async def _download_via_aa_and_stacks(
                             cr = _req.get(f"{url}/api/config", headers=_bearer(), timeout=5)
                             if cr.status_code == 200:
                                 cfg = cr.json()
-                                # 尝试所有可能的 key
-                                for cfg_key in ("download_directory", "download_path", "dl_path",
-                                                "downloadDir", "download_dir", "stacks_download"):
-                                    raw = cfg.get(cfg_key, "")
-                                    if raw:
-                                        p = str(raw).strip()
-                                        if p and os.path.isdir(p):
-                                            extra_search_paths.append(p)
-                                            task_store.add_log(task_id, f"AA: stacks config [{cfg_key}]={p} → added to search paths")
-                                            break
-                                else:
-                                    task_store.add_log(task_id, f"AA: stacks config response keys: {list(cfg.keys())[:10]}")
+                                # 查找 download 目录（可能嵌套在 downloads 或 server 下）
+                                for section in (cfg, cfg.get("downloads", {}), cfg.get("server", {})):
+                                    for cfg_key in ("directory", "path", "download_directory", "download_dir"):
+                                        raw = section.get(cfg_key, "")
+                                        if raw:
+                                            p = str(raw).strip()
+                                            if p and os.path.isdir(p):
+                                                extra_search_paths.append(p)
+                                                task_store.add_log(task_id, f"AA: stacks config {cfg_key}={p}")
+                                                break
+                                    if extra_search_paths:
+                                        break
+                                if not extra_search_paths:
+                                    task_store.add_log(task_id, f"AA: stacks config keys: {list(cfg.keys())[:10]}")
                         except Exception as e:
                             task_store.add_log(task_id, f"AA: could not get stacks config: {e}")
 
-                        # 如果 API 没返回路径，尝试常用默认路径
-                        if not extra_search_paths:
-                            for guess in ("D:\\stacks-data\\download",
-                                          os.path.expandvars(r"%USERPROFILE%\stacks\download")):
-                                if os.path.isdir(guess):
-                                    extra_search_paths.append(guess)
-                                    task_store.add_log(task_id, f"AA: using default search path: {guess}")
-                                    break
-                        # 始终把 download_dir 加入搜索
-                        if dl_dir and dl_dir not in extra_search_paths:
+                        # 始终把应用 download_dir 加入搜索（单一路径，不再加硬编码备用）
+                        if dl_dir and os.path.isdir(dl_dir) and dl_dir not in extra_search_paths:
                             extra_search_paths.append(dl_dir)
 
                         task_store.add_log(task_id, f"AA: extra search paths: {extra_search_paths}")
