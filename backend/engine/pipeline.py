@@ -3082,7 +3082,7 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                 title = report.get("title", "book")
                 safe_title = re.sub(r'[<>:"/\\|?*]', '_', title).strip()[:80]
                 ocr_done = report.get("ocr_done")
-                bw_done = ocr_done and config.get("pdf_compress", False)
+                bw_done = bool(report.get("compressed_path")) and os.path.exists(report.get("compressed_path", ""))
                 if bw_done:
                     ocr_suffix = "_ocr_bw"
                 elif ocr_done:
