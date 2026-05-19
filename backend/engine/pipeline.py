@@ -2119,9 +2119,10 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
         try:
             import shutil as _shutil_copy
             _shutil_copy.copy2(pdf_path, _original_pdf)
-            report["original_path"] = _original_pdf
         except Exception:
             pass
+    if os.path.exists(pdf_path):
+        report["original_path"] = _original_pdf if os.path.exists(_original_pdf) else pdf_path
 
     # Close any cached fitz handle so OCR can overwrite the file
     try:
