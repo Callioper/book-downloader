@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -120,7 +120,10 @@ async def health():
 
 
 @app.post("/api/v1/shutdown")
-async def shutdown():
+async def shutdown(request: Request):
+    referer = request.headers.get("referer", "")
+    if "localhost" not in referer and "127.0.0.1" not in referer:
+        raise HTTPException(status_code=403, detail="Shutdown only allowed from localhost")
     def _do_shutdown():
         import time as _time
         _time.sleep(0.3)
