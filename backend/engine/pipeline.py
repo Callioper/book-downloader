@@ -2992,16 +2992,19 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                 safe_title = re.sub(r'[<>:"/\\|?*]', '_', title).strip()[:80]
                 ocr_done = report.get("ocr_done")
                 bw_done = bool(report.get("compressed_path")) and os.path.exists(report.get("compressed_path", ""))
-                if bw_done:
-                    ocr_suffix = "_ocr_bw"
-                elif ocr_done:
-                    ocr_suffix = "_ocr"
+                if template:
+                    new_name = os.path.basename(pdf_path)
                 else:
-                    ocr_suffix = ""
-                if ss_code:
-                    new_name = f"{ss_code}_{safe_title}{ocr_suffix}{ext}"
-                else:
-                    new_name = f"{safe_title}{ocr_suffix}{ext}"
+                    if bw_done:
+                        ocr_suffix = "_ocr_bw"
+                    elif ocr_done:
+                        ocr_suffix = "_ocr"
+                    else:
+                        ocr_suffix = ""
+                    if ss_code:
+                        new_name = f"{ss_code}_{safe_title}{ocr_suffix}{ext}"
+                    else:
+                        new_name = f"{safe_title}{ocr_suffix}{ext}"
                 dest_pdf = os.path.join(target_dir, new_name)
                 moved = False
                 orig_path = report.get("ocr_output_file", "")  # OCR original path
