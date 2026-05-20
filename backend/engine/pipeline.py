@@ -1193,15 +1193,9 @@ async def _download_via_aa_and_stacks(
                             task_store.add_log(task_id, "AA: failed to add MD5 to stacks queue after 3 attempts")
                             return None
 
-                        # Step 3: 心跳轮询（每3秒检测一次，直到下载完成）
+                        # Step 3: 心跳轮询（每3秒检测一次，直到下载完成，无限时）
                         task_store.add_log(task_id, "AA: heartbeat polling for stacks download...")
-                        start_time = time.time()
-                        _hb_timeout = 600  # 10 min global timeout for heartbeat
                         while True:
-                            _elapsed_hb = time.time() - start_time
-                            if _elapsed_hb > _hb_timeout:
-                                task_store.add_log(task_id, f"AA: heartbeat timeout ({int(_elapsed_hb)}s), giving up on this MD5")
-                                return None
                             dl_info = None
                             try:
                                 sr = _req.get(f"{url}/api/status", headers=_bearer(), timeout=5)
@@ -3111,7 +3105,7 @@ async def run_pipeline(task_id: str) -> None:
         _start_from = 0
         report = {}
     task_store.update(task_id, {"status": STATUS_RUNNING})
-    task_store.add_log(task_id, "PIPELINE v1.3.6: compressed_path fix, OCR copy name collision fix, download endpoint fallback")
+    task_store.add_log(task_id, "PIPELINE v1.3.7: bookmark offset=0→TOC modal, AA heartbeat no timeout, stacks_timeout respects config")
     await _emit(task_id, "task_started", {"task_id": task_id})
 
     # Log current settings at pipeline start
