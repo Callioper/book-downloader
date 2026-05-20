@@ -1855,25 +1855,40 @@ async def system_status():
         url = cfg.get("stacks_base_url", "")
         if not url:
             return "stacks", {"ok": False, "detail": "未配置"}
-        try:
-            async with _httpx.AsyncClient(timeout=3) as c:
-                hr = await c.get(f"{url}/api/health")
+
+        def _do_check():
+            import requests as _r
+            # health check
+            try:
+                hr = _r.get(f"{url}/api/health", timeout=5)
                 if hr.status_code != 200:
                     return "stacks", {"ok": False, "detail": f"HTTP {hr.status_code}"}
-                uname = cfg.get("stacks_username", "")
-                passwd = cfg.get("stacks_password", "")
-                if uname and passwd:
-                    lr = await c.post(f"{url}/login", json={"username": uname, "password": passwd})
-                    if lr.status_code == 200:
-                        session_cookie = lr.cookies.get("session", "")
-                        if session_cookie:
-                            from config import set_stacks_cached_session
-                            set_stacks_cached_session(session_cookie)
-                        return "stacks", {"ok": True, "detail": "已登录"}
-                    return "stacks", {"ok": False, "detail": f"登录 HTTP {lr.status_code}"}
+            except Exception as e:
+                return "stacks", {"ok": False, "detail": str(e)[:50]}
+
+            uname = cfg.get("stacks_username", "")
+            passwd = cfg.get("stacks_password", "")
+            if not uname or not passwd:
                 return "stacks", {"ok": True, "detail": "可连接"}
-        except Exception as ex:
-            return "stacks", {"ok": False, "detail": str(ex)[:50]}
+
+            # login
+            try:
+                session = _r.Session()
+                lr = session.post(f"{url}/login",
+                                  json={"username": uname, "password": passwd},
+                                  timeout=10)
+                if lr.status_code != 200:
+                    return "stacks", {"ok": False, "detail": f"登录 HTTP {lr.status_code}"}
+                session_cookie = lr.cookies.get("session", "")
+                if session_cookie:
+                    from config import set_stacks_cached_session
+                    set_stacks_cached_session(session_cookie)
+                return "stacks", {"ok": True, "detail": "已登录"}
+            except Exception as e:
+                return "stacks", {"ok": False, "detail": str(e)[:50]}
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _do_check)
 
     async def check_flare():
         port = cfg.get("flaresolverr_port", 8191)
