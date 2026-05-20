@@ -3136,8 +3136,10 @@ async def run_pipeline(task_id: str) -> None:
 
                 # Inject bookmarks right after download (Step 3), before OCR changes page structure
                 if step_name == "download_pages":
-                    pdf_path = report.get("pdf_path", "")
+                    task_store.add_log(task_id, f"Pre-OCR DEBUG: report keys={list(report.keys())[:15]}")
+                    pdf_path = report.get("pdf_path", "") or report.get("download_path", "")
                     bookmark = report.get("bookmark", "") or report.get("shukui_toc", "")
+                    task_store.add_log(task_id, f"Pre-OCR bookmark check: pdf_path={pdf_path} pdf_exists={os.path.exists(pdf_path) if pdf_path else False} bookmark={len(bookmark) if bookmark else 0}")
                     if bookmark and pdf_path and os.path.exists(pdf_path):
                         try:
                             from addbookmark.bookmark_injector import inject_bookmarks

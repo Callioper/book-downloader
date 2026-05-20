@@ -104,13 +104,20 @@ async def search_aa(
 
     # 提取 MD5 链接并附带标题（去重，保留出现顺序）
     seen = set()
-    for m in re.finditer(r'href="/md5/([a-f0-9]{32})"[^>]*>\s*([^<]+)', html):
+    # Pattern: match href="/md5/<hash>" and capture any non-< text after the opening tag
+    for m in re.finditer(r'href="/md5/([a-f0-9]{32})"[^>]*>', html):
         md5 = m.group(1)
         if md5 not in seen:
             seen.add(md5)
-            # Clean HTML tags from title
-            import html as _html
-            title = _html.unescape(re.sub(r'<[^>]+>', '', m.group(2))).strip()
+            # Extract a short text snippet after the link (up to 150 chars)
+            rest = html[m.end():m.end()+500]
+            # Take everything up to the next <a or </div or <br, strip tags
+            end = len(rest)
+            for sep in ['<', '\n']:
+                pos = rest.find(sep)
+                if pos > 0 and pos < end:
+                    end = pos
+            title = re.sub(r'<[^>]+>', '', rest[:end]).strip()
             results.append({"md5": md5, "title": title})
 
     logger.info(f"AA search '{query}': found {len(results)} MD5 entries")
