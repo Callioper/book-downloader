@@ -8,6 +8,15 @@ interface TaskReportProps {
   taskId?: string
 }
 
+function DownloadLink({ path, taskId, type }: { path: string; taskId?: string; type: string }) {
+  if (!taskId) return <>{path}</>
+  return (
+    <a href={`${API_BASE}/tasks/${taskId}/download?type=${type}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+      {path}
+    </a>
+  )
+}
+
 export default function TaskReport({ report, finishedDir, createdAt, taskId }: TaskReportProps) {
   if (!report || Object.keys(report).length === 0) {
     return (
@@ -41,7 +50,8 @@ export default function TaskReport({ report, finishedDir, createdAt, taskId }: T
 
   const hasBookmark = !!report.bookmark
   const pdfPath = report.pdf_path || ''
-  const outputFile = report.output_file || ''
+  const outputFile = report.ocr_output_file || report.output_file || ''
+  const downloadPath = report.download_path || ''
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -67,27 +77,27 @@ export default function TaskReport({ report, finishedDir, createdAt, taskId }: T
                     </td>
                   </tr>
                 ))}
+                {downloadPath && downloadPath !== pdfPath && (
+                  <tr className="border-b border-gray-50">
+                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">原始PDF</td>
+                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
+                      <DownloadLink path={downloadPath} taskId={taskId} type="original" />
+                    </td>
+                  </tr>
+                )}
                 {pdfPath && (
                   <tr className="border-b border-gray-50">
-                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">PDF路径</td>
+                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">输出PDF</td>
                     <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
-                      {taskId ? (
-                        <a href={`${API_BASE}/tasks/${taskId}/download?type=original`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{pdfPath}</a>
-                      ) : (
-                        pdfPath
-                      )}
+                      <DownloadLink path={pdfPath} taskId={taskId} type="compressed" />
                     </td>
                   </tr>
                 )}
                 {outputFile && (
                   <tr className="border-b border-gray-50">
-                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">OCR路径</td>
+                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">OCR版</td>
                     <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
-                      {taskId ? (
-                        <a href={`${API_BASE}/tasks/${taskId}/download?type=ocr`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{outputFile}</a>
-                      ) : (
-                        outputFile
-                      )}
+                      <DownloadLink path={outputFile} taskId={taskId} type="ocr" />
                     </td>
                   </tr>
                 )}

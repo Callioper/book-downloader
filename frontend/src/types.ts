@@ -72,6 +72,10 @@ export interface TaskReport {
   ocr_done?: boolean
   tmp_dir?: string
   output_file?: string
+  ocr_output_file?: string
+  download_path?: string
+  download_source?: string
+  compressed_path?: string
   completed_at?: string
   download_note?: string
   description?: string
