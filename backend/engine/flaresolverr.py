@@ -274,7 +274,8 @@ async def get_page_content(url: str, proxy: str = "") -> Optional[str]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
-        proxies = {"http": proxy, "https": proxy} if proxy else None
+        from engine import _make_proxies
+        proxies = _make_proxies(url, proxy)
         r = requests.get(url, headers=headers, timeout=15, proxies=proxies)
         if r.status_code == 200:
             return r.text

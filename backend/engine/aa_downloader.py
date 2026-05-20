@@ -66,7 +66,8 @@ async def _get_page_with_flare(url: str, proxy: str = "", timeout: int = 30) -> 
         h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         kwargs = {"timeout": timeout, "headers": h, "verify": False}
         if proxy:
-            kwargs["proxies"] = {"http": proxy, "https": proxy}
+            from engine import _make_proxies
+            kwargs["proxies"] = _make_proxies(url, proxy)
         r = _req.get(url, **kwargs)
         if r.status_code == 200:
             r.encoding = 'utf-8'

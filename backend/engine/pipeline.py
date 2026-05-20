@@ -2899,6 +2899,8 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
 
     bookmark = task.get("bookmark", "") or report.get("bookmark", "")
     pdf_path = report.get("pdf_path", "")
+    # TOC modal previews original download (before OCR/compression) for best visual quality
+    preview_path = report.get("download_path", "") or pdf_path
 
     if bookmark:
         src = "user" if task.get("bookmark") else f"Step2 ({'+'.join(k for k,v in report.get('raw_sources',{}).items() if v) or 'merged'})"
@@ -2929,7 +2931,7 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
         await ws_manager.broadcast_all({
             "type": "show_toc_modal",
             "task_id": task_id,
-            "pdf_path": pdf_path,
+            "pdf_path": preview_path,
             "output_dir": config.get("finished_dir", "") or config.get("download_dir", ""),
         })
         await _emit_progress(task_id, "bookmark", 30, "等待智能目录确认...")
@@ -2954,8 +2956,10 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
 
     if bookmark and pdf_path and os.path.exists(pdf_path):
         # Auto-detect offset before deciding whether to TOC-modal
+        # Use original download for offset detection (pre-OCR page labels intact)
         from addbookmark.bookmark_injector import inject_bookmarks, _detect_offset
-        detected_offset = _detect_offset(pdf_path, bookmark)
+        offset_path = preview_path if os.path.exists(preview_path) else pdf_path
+        detected_offset = _detect_offset(offset_path, bookmark)
         task_store.add_log(task_id, f"Bookmark offset detected: {detected_offset}")
 
         # If offset=0 (auto-detection failed), show TOC modal for manual adjustment
@@ -2965,7 +2969,7 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
             await ws_manager.broadcast_all({
                 "type": "show_toc_modal",
                 "task_id": task_id,
-                "pdf_path": pdf_path,
+                "pdf_path": preview_path,
                 "output_dir": config.get("finished_dir", "") or config.get("download_dir", ""),
             })
             await _emit_progress(task_id, "bookmark", 30, "等待智能目录确认...")

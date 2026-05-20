@@ -39,7 +39,10 @@ class ZLibDownloader:
 
     @property
     def _proxies(self):
-        return {"http": self.proxy, "https": self.proxy} if self.proxy else None
+        if self.proxy:
+            os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1,::1")
+            return {"http": self.proxy, "https": self.proxy}
+        return None
 
     @property
     def _zfile_url(self):
