@@ -290,6 +290,36 @@ export default function TaskDetailPage() {
                 打开文件夹
               </button>
             )}
+            {task.status === 'completed' && task.report?.download_path && task.report.download_path !== task.report.pdf_path && (
+              <a
+                href={`${API_BASE}/tasks/${taskId}/download?type=original`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 inline-block no-underline"
+              >
+                下载原版PDF
+              </a>
+            )}
+            {task.status === 'completed' && task.report?.pdf_path && (
+              <a
+                href={`${API_BASE}/tasks/${taskId}/download?type=compressed`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-block no-underline"
+              >
+                下载压缩版
+              </a>
+            )}
+            {task.status === 'completed' && (task.report?.ocr_output_file || task.report?.output_file) && (
+              <a
+                href={`${API_BASE}/tasks/${taskId}/download?type=ocr`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 inline-block no-underline"
+              >
+                下载OCR版
+              </a>
+            )}
           </div>
         </div>
 
