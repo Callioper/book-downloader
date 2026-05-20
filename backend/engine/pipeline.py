@@ -914,17 +914,13 @@ async def _download_via_aa_and_stacks(
             except Exception as e:
                 task_store.add_log(task_id, f"AA: stacks login error: {e}")
 
-        # Step C: 按标题相关度预过滤 MD5（避免拉取无关详情页）
-        if title or isbn:
+        # Step C: 预过滤 MD5 — SS码/ISBN 搜索信任AA结果，标题搜索按相关度过滤
+        if title and not ss_code and not isbn:
             filtered = []
             for e in all_md5_entries:
                 e_title = e.get("title", "")
-                if not e_title:
-                    filtered.append(e)  # no title extracted, keep for detail check
-                elif _calc_title_relevance(e_title, title) >= 50:
+                if not e_title or _calc_title_relevance(e_title, title) >= 50:
                     filtered.append(e)
-                elif isbn and isbn in e_title:
-                    filtered.append(e)  # ISBN match in title text
             if len(filtered) < len(all_md5_entries):
                 task_store.add_log(task_id, f"AA: title-filtered MD5 entries {len(all_md5_entries)} → {len(filtered)}")
                 all_md5_entries = filtered
