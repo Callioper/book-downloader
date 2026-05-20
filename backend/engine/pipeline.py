@@ -2935,15 +2935,46 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
             task_store.update(task_id, {"_toc_done": False})
 
     if bookmark and pdf_path and os.path.exists(pdf_path):
-        # Skip if already injected before OCR (Step 3 pre-injection)
-        if report.get("bookmark_applied") and not task.get("bookmark"):
+        # Auto-detect offset before deciding whether to TOC-modal
+        from addbookmark.bookmark_injector import inject_bookmarks, _detect_offset
+        detected_offset = _detect_offset(pdf_path, bookmark)
+        task_store.add_log(task_id, f"Bookmark offset detected: {detected_offset}")
+
+        # If offset=0 (auto-detection failed), show TOC modal for manual adjustment
+        if detected_offset == 0 and not task.get("bookmark"):
+            task_store.add_log(task_id, "Bookmark offset=0, 弹出智能目录窗口供手动调整...")
+            task_store.update(task_id, {"_toc_done": False})
+            await ws_manager.broadcast_all({
+                "type": "show_toc_modal",
+                "task_id": task_id,
+                "pdf_path": pdf_path,
+                "output_dir": config.get("finished_dir", "") or config.get("download_dir", ""),
+            })
+            await _emit_progress(task_id, "bookmark", 30, "等待智能目录确认...")
+
+            _timeout_iters = 300
+            for _ in range(_timeout_iters):
+                _t = task_store.get(task_id)
+                if not _t or _t.get("status") == STATUS_CANCELLED:
+                    task_store.add_log(task_id, "Task cancelled during TOC wait")
+                    task_store.update(task_id, {"_toc_done": False})
+                    return report
+                if _t.get("_toc_done"):
+                    task_store.add_log(task_id, "智能目录已由用户确认注入")
+                    report["bookmark_applied"] = True
+                    task_store.update(task_id, {"_toc_done": False})
+                    break
+                await asyncio.sleep(2)
+            else:
+                task_store.add_log(task_id, "智能目录确认超时，跳过书签注入")
+                task_store.update(task_id, {"_toc_done": False})
+        elif report.get("bookmark_applied") and not task.get("bookmark"):
             task_store.add_log(task_id, "Bookmark already injected before OCR, skipping")
         else:
             task_store.add_log(task_id, "Applying bookmark to PDF...")
             try:
-                from addbookmark.bookmark_injector import inject_bookmarks
-                inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
-                task_store.add_log(task_id, "Bookmark applied to PDF")
+                inject_bookmarks(pdf_path, bookmark, pdf_path, offset=detected_offset)
+                task_store.add_log(task_id, f"Bookmark applied to PDF (offset={detected_offset})")
                 report["bookmark_applied"] = True
             except ImportError:
                 task_store.add_log(task_id, "Bookmark injector module not available")
@@ -3146,11 +3177,14 @@ async def run_pipeline(task_id: str) -> None:
                     task_store.add_log(task_id, f"Pre-OCR bookmark check: pdf_path={pdf_path} pdf_exists={os.path.exists(pdf_path) if pdf_path else False} bookmark={len(bookmark) if bookmark else 0}")
                     if bookmark and pdf_path and os.path.exists(pdf_path):
                         try:
-                            from addbookmark.bookmark_injector import inject_bookmarks
+                            from addbookmark.bookmark_injector import inject_bookmarks, _detect_offset
                             task_store.add_log(task_id, "Injecting bookmarks before OCR (page labels intact)...")
-                            inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
-                            report["bookmark_applied"] = True
-                            task_store.add_log(task_id, "Bookmarks pre-injected before OCR")
+                            _, detected_offset = inject_bookmarks(pdf_path, bookmark, pdf_path, offset=0)
+                            if detected_offset != 0:
+                                report["bookmark_applied"] = True
+                                task_store.add_log(task_id, f"Bookmarks pre-injected before OCR (offset={detected_offset})")
+                            else:
+                                task_store.add_log(task_id, "Pre-OCR bookmark: offset=0 (labels not found), deferring to Step 6")
                         except Exception as e:
                             task_store.add_log(task_id, f"Pre-OCR bookmark injection failed: {e}")
 

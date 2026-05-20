@@ -53,7 +53,7 @@ def inject_bookmarks(
     bookmark_text: str,
     output_path: str,
     offset: int = 0,
-) -> str:
+) -> tuple:
     """
     Inject bookmarks into PDF.
 
@@ -64,16 +64,17 @@ def inject_bookmarks(
         offset: Page offset, 0 = auto-detect (shukui_page + offset = PDF_viewer_page).
 
     Returns:
-        Output file path.
+        Tuple of (output_path, applied_offset).
     """
     from addbookmark.bookmark_parser import parse_bookmark_hierarchy
 
     outlines = parse_bookmark_hierarchy(bookmark_text)
     if not outlines:
-        return output_path
+        return output_path, 0
 
+    detected_offset = offset
     if offset <= 0 and bookmark_text:
-        offset = _detect_offset(pdf_path, bookmark_text)
+        detected_offset = _detect_offset(pdf_path, bookmark_text)
 
     try:
         import fitz as _f
@@ -93,7 +94,7 @@ def inject_bookmarks(
                 page_num = shukui_page  # absolute page, no offset
                 level = 1
             else:
-                page_num = shukui_page + offset
+                page_num = shukui_page + detected_offset
             page_num = max(1, min(page_num, total))
             toc_entries.append([level, title, page_num])
 
@@ -107,7 +108,7 @@ def inject_bookmarks(
         else:
             doc.save(output_path)
             doc.close()
-        return output_path
+        return output_path, detected_offset
 
     except ImportError:
         pass
@@ -170,7 +171,7 @@ def inject_bookmarks(
     if r.returncode != 0:
         stderr = r.stderr.decode('utf-8', errors='replace') if r.stderr else ''
         raise RuntimeError(f"bookmark inject subprocess failed (rc={r.returncode}): {stderr[:300]}")
-    return output_path
+    return output_path, offset  # subprocess re-detects its own offset; pass caller's value
 
 
 def _find_system_python():
