@@ -3137,7 +3137,7 @@ async def run_pipeline(task_id: str) -> None:
         _start_from = 0
         report = {}
     task_store.update(task_id, {"status": STATUS_RUNNING})
-    task_store.add_log(task_id, "PIPELINE v1.3.7: bookmark offset=0→TOC modal, AA heartbeat no timeout, stacks_timeout respects config")
+    task_store.add_log(task_id, "PIPELINE v1.3.8: bw_compress_level, localhost proxy bypass, AA PDF-only filter, TOC skip/close unblock, preview original PDF")
     await _emit(task_id, "task_started", {"task_id": task_id})
 
     # Log current settings at pipeline start
