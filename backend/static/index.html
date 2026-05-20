@@ -5,8 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Book Downloader</title>
-    <script type="module" crossorigin src="/assets/index-BY1FpG5T.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-cLy57d5b.css">
+    <script>
+      // Apply theme immediately to prevent flash of wrong mode
+      (function() {
+        var t = localStorage.getItem('theme') || 'auto';
+        if (t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-C-xwI3Wh.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DwwWeu3S.css">
   </head>
   <body class="bg-gray-50 min-h-screen">
     <div id="root"></div>
