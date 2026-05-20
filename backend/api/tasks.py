@@ -218,9 +218,9 @@ async def download_pdf(task_id: str, type: str = Query(..., description="origina
         raise HTTPException(status_code=404, detail="Task not found")
     report = task.get("report", {})
     path_map = {
-        "original": report.get("original_path") or report.get("pdf_path"),
-        "ocr": report.get("ocr_path"),
-        "compressed": report.get("compressed_path"),
+        "original": report.get("download_path"),
+        "ocr": report.get("ocr_output_file") or report.get("output_file"),
+        "compressed": report.get("pdf_path"),
     }
     file_path = path_map.get(type)
     if not file_path or not os.path.exists(file_path):
