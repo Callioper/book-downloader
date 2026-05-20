@@ -3021,6 +3021,8 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     shutil.move(pdf_path, dest_pdf)
                     moved = True
                     report["pdf_path"] = dest_pdf
+                    if report.get("compressed_path"):
+                        report["compressed_path"] = dest_pdf
                     task_store.add_log(task_id, f"PDF saved: {dest_pdf}")
 
                 if moved or os.path.abspath(pdf_path) == os.path.abspath(dest_pdf):
