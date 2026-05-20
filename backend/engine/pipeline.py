@@ -3004,7 +3004,7 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     new_name = f"{safe_title}{ocr_suffix}{ext}"
                 dest_pdf = os.path.join(target_dir, new_name)
                 moved = False
-                orig_path = report.get("output_file", "")  # OCR original path
+                orig_path = report.get("ocr_output_file", "")  # OCR original path
                 if os.path.abspath(pdf_path) != os.path.abspath(dest_pdf):
                     if os.path.exists(dest_pdf):
                         os.remove(dest_pdf)
