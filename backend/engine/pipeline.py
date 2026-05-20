@@ -1091,7 +1091,10 @@ async def _download_via_aa_and_stacks(
                             for ext in (".zip", ".pdf", ".epub", ".mobi", ".rar", ".tar"):
                                 found = _find_stacks_file(f"{ss_code}{ext}", "", extra_search_paths)
                                 if found:
-                                    dest = _copy_dest(found, dl_dir)
+                                    safe_title = re.sub(r'[<>:"/\\|?*]', '_', report.get("title", "book")).strip()[:80]
+                                    dest = os.path.join(dl_dir, f"{ss_code}_{safe_title}{ext}" if ss_code else f"{safe_title}{ext}")
+                                    if os.path.abspath(found) != os.path.abspath(dest):
+                                        shutil.copy2(found, dest)
                                     task_store.add_log(task_id, f"AA: existing file found by SSID → {dest}")
                                     return dest
                                 # 也检查 SSID_xxx 模式
@@ -1099,7 +1102,10 @@ async def _download_via_aa_and_stacks(
                                     base = Path(base_str)
                                     for p in base.glob(f"{ss_code}_*{ext}"):
                                         if p.stat().st_size > 1024:
-                                            dest = _copy_dest(str(p), dl_dir)
+                                            safe_title = re.sub(r'[<>:"/\\|?*]', '_', report.get("title", "book")).strip()[:80]
+                                            dest = os.path.join(dl_dir, f"{ss_code}_{safe_title}{ext}" if ss_code else f"{safe_title}{ext}")
+                                            if os.path.abspath(str(p)) != os.path.abspath(dest):
+                                                shutil.copy2(str(p), dest)
                                             task_store.add_log(task_id, f"AA: existing file found (named) → {dest}")
                                             return dest
 
@@ -1889,21 +1895,15 @@ async def _step_convert_pdf(task_id: str, task: Dict[str, Any], config: Dict[str
                     pass
                 if is_pdf:
                     task_store.add_log(task_id, f"Using downloaded file as PDF: {dl_path}")
-                    out_dir = config.get("download_dir", "")
-                    if out_dir and os.path.abspath(dl_path).startswith(os.path.abspath(out_dir)):
-                        # 文件已在 download_dir 中
+                    # 复制到 tmp_dir 处理，保留 download_dir 中的原始文件不动
+                    if tmp_dir and os.path.abspath(dl_path).startswith(os.path.abspath(tmp_dir)):
                         report["pdf_path"] = dl_path
                     else:
-                        # 复制到 download_dir
-                        ss_code = report.get("ss_code", "")
                         safe_title = re.sub(r'[<>:"/\\|?*]', '_', report.get("title", "book")).strip()[:80]
-                        fname = os.path.basename(dl_path)
-                        ext = os.path.splitext(fname)[1] or ".pdf"
-                        new_name = f"{ss_code}_{safe_title}{ext}" if ss_code else f"{safe_title}{ext}"
-                        dest_path = os.path.join(out_dir, new_name)
-                        shutil.copy2(dl_path, dest_path)
-                        report["pdf_path"] = dest_path
-                        task_store.add_log(task_id, f"PDF copied to download dir: {dest_path}")
+                        work_copy = os.path.join(tmp_dir, f"{safe_title}.pdf")
+                        shutil.copy2(dl_path, work_copy)
+                        report["pdf_path"] = work_copy
+                        task_store.add_log(task_id, f"PDF copied to temp dir for processing: {work_copy}")
                     await _emit(task_id, "step_progress", {"step": "convert_pdf", "progress": 100})
                     return report
 
@@ -2855,6 +2855,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 report["ocr_output_file"] = ocr_original  # for OCR download link
                 task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
                 os.replace(output_path, report["pdf_path"])
+                report["compressed_path"] = report["pdf_path"]  # mark for finalize naming
                 saved_pct = round((1 - after / before) * 100, 1)
                 task_store.add_log(
                     task_id,
@@ -2975,6 +2976,9 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     os.rename(pdf_path, new_path)
                     pdf_path = new_path
                     report["pdf_path"] = pdf_path
+                # 同步更新 compressed_path，防止 finalize 阶段路径失效
+                if report.get("compressed_path"):
+                    report["compressed_path"] = pdf_path
                     task_store.add_log(task_id, f"File renamed: {os.path.basename(pdf_path)}")
         except Exception as e:
             task_store.add_log(task_id, f"File rename failed: {e}")
@@ -2992,22 +2996,25 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                 safe_title = re.sub(r'[<>:"/\\|?*]', '_', title).strip()[:80]
                 ocr_done = report.get("ocr_done")
                 bw_done = bool(report.get("compressed_path")) and os.path.exists(report.get("compressed_path", ""))
+
+                # 命名: {ss_code}_{title}_ocr_bw.pdf / {ss_code}_{title}_ocr.pdf / {ss_code}_{title}.pdf
                 if template:
-                    new_name = os.path.basename(pdf_path)
+                    base = os.path.basename(pdf_path)
+                    base_noext = os.path.splitext(base)[0]
                 else:
-                    if bw_done:
-                        ocr_suffix = "_ocr_bw"
-                    elif ocr_done:
-                        ocr_suffix = "_ocr"
-                    else:
-                        ocr_suffix = ""
-                    if ss_code:
-                        new_name = f"{ss_code}_{safe_title}{ocr_suffix}{ext}"
-                    else:
-                        new_name = f"{safe_title}{ocr_suffix}{ext}"
+                    base_noext = f"{ss_code}_{safe_title}" if ss_code else safe_title
+
+                if bw_done:
+                    new_name = f"{base_noext}_ocr_bw{ext}"
+                elif ocr_done:
+                    new_name = f"{base_noext}_ocr{ext}"
+                else:
+                    new_name = f"{base_noext}{ext}"
+
                 dest_pdf = os.path.join(target_dir, new_name)
                 moved = False
-                orig_path = report.get("ocr_output_file", "")  # OCR original path
+                orig_path = report.get("ocr_output_file", "")
+
                 if os.path.abspath(pdf_path) != os.path.abspath(dest_pdf):
                     if os.path.exists(dest_pdf):
                         os.remove(dest_pdf)
@@ -3015,11 +3022,17 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     moved = True
                     report["pdf_path"] = dest_pdf
                     task_store.add_log(task_id, f"PDF saved: {dest_pdf}")
+
                 if moved or os.path.abspath(pdf_path) == os.path.abspath(dest_pdf):
                     task_store.add_log(task_id, f"任务输出: {dest_pdf}")
+
                 # Move OCR original to output dir
                 if orig_path and os.path.exists(orig_path):
-                    ocr_name = f"{ss_code}_{safe_title}_ocr{ext}" if ss_code else f"{safe_title}_ocr{ext}"
+                    if bw_done:
+                        ocr_name = f"{base_noext}_ocr{ext}"
+                    else:
+                        # 无 BW 压缩时，主 PDF 已是 _ocr.pdf，OCR 副本用 _ocr_orig 避免同名覆盖
+                        ocr_name = f"{base_noext}_ocr_orig{ext}"
                     ocr_dest = os.path.join(target_dir, ocr_name)
                     if os.path.exists(ocr_dest):
                         os.remove(ocr_dest)

@@ -300,16 +300,6 @@ export default function TaskDetailPage() {
                 下载原版PDF
               </a>
             )}
-            {task.status === 'completed' && task.report?.pdf_path && (
-              <a
-                href={`${API_BASE}/tasks/${taskId}/download?type=compressed`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-block no-underline"
-              >
-                下载压缩版
-              </a>
-            )}
             {task.status === 'completed' && (task.report?.ocr_output_file || task.report?.output_file) && (
               <a
                 href={`${API_BASE}/tasks/${taskId}/download?type=ocr`}
@@ -318,6 +308,16 @@ export default function TaskDetailPage() {
                 className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 inline-block no-underline"
               >
                 下载OCR版
+              </a>
+            )}
+            {task.status === 'completed' && task.report?.pdf_path && (
+              <a
+                href={`${API_BASE}/tasks/${taskId}/download?type=compressed`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 inline-block no-underline"
+              >
+                下载压缩版
               </a>
             )}
           </div>

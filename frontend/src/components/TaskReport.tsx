@@ -85,19 +85,19 @@ export default function TaskReport({ report, finishedDir, createdAt, taskId }: T
                     </td>
                   </tr>
                 )}
-                {pdfPath && (
-                  <tr className="border-b border-gray-50">
-                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">输出PDF</td>
-                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
-                      <DownloadLink path={pdfPath} taskId={taskId} type="compressed" />
-                    </td>
-                  </tr>
-                )}
                 {outputFile && (
                   <tr className="border-b border-gray-50">
                     <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">OCR版</td>
                     <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
                       <DownloadLink path={outputFile} taskId={taskId} type="ocr" />
+                    </td>
+                  </tr>
+                )}
+                {pdfPath && (
+                  <tr className="border-b border-gray-50">
+                    <td className="py-1.5 pr-3 text-xs text-gray-500 w-20 align-top">压缩版</td>
+                    <td className="py-1.5 text-xs text-gray-800 break-all font-mono">
+                      <DownloadLink path={pdfPath} taskId={taskId} type="compressed" />
                     </td>
                   </tr>
                 )}
