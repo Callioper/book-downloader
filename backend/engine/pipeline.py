@@ -2852,7 +2852,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 # Save OCR original before replacing with compressed version
                 ocr_original = report["pdf_path"] + ".ocr"
                 shutil.copy2(report["pdf_path"], ocr_original)
-                report["compressed_path"] = ocr_original
+                report["output_file"] = ocr_original  # for download link
                 task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
                 os.replace(output_path, report["pdf_path"])
                 saved_pct = round((1 - after / before) * 100, 1)
@@ -3004,6 +3004,7 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     new_name = f"{safe_title}{ocr_suffix}{ext}"
                 dest_pdf = os.path.join(target_dir, new_name)
                 moved = False
+                orig_path = report.get("output_file", "")  # OCR original path
                 if os.path.abspath(pdf_path) != os.path.abspath(dest_pdf):
                     if os.path.exists(dest_pdf):
                         os.remove(dest_pdf)
@@ -3013,14 +3014,14 @@ async def _step_finalize(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     task_store.add_log(task_id, f"PDF saved: {dest_pdf}")
                 if moved or os.path.abspath(pdf_path) == os.path.abspath(dest_pdf):
                     task_store.add_log(task_id, f"任务输出: {dest_pdf}")
-                # Also move the preserved OCR original if BW compression was used
-                ocr_copy = pdf_path + ".ocr"
-                if os.path.exists(ocr_copy):
+                # Move OCR original to output dir
+                if orig_path and os.path.exists(orig_path):
                     ocr_name = f"{ss_code}_{safe_title}_ocr{ext}" if ss_code else f"{safe_title}_ocr{ext}"
                     ocr_dest = os.path.join(target_dir, ocr_name)
                     if os.path.exists(ocr_dest):
                         os.remove(ocr_dest)
-                    shutil.move(ocr_copy, ocr_dest)
+                    shutil.move(orig_path, ocr_dest)
+                    report["output_file"] = ocr_dest
                     task_store.add_log(task_id, f"OCR 原稿已保存: {ocr_dest}")
             except Exception as e:
                 task_store.add_log(task_id, f"Finalize move error: {e}")
