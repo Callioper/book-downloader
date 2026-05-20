@@ -2108,16 +2108,7 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
         await _emit(task_id, "step_progress", {"step": "ocr", "progress": 100})
         return report
     ocr_oversample = str(config.get("ocr_oversample", 200))
-    _opt_level = "0"
-    if config.get("pdf_compress", False):
-        import shutil as _opt_sh
-        if _opt_sh.which("gswin64c") or _opt_sh.which("gs"):
-            _opt_level = "1"
-            task_store.add_log(task_id, "PDF optimization enabled (GhostScript found for ocrmypdf --optimize)")
-        else:
-            task_store.add_log(task_id, "PDF optimization requested but GhostScript not found; ocrmypdf will skip --optimize")
-    else:
-        task_store.add_log(task_id, "PDF optimization disabled")
+    _opt_level = "0"  # Always --optimize 0 to avoid jbig2.EXE crash
 
     if ocr_engine == "llm_ocr":
         task_store.add_log(task_id, f"OCR engine: llm_ocr (model: {config.get('llm_ocr_model', '')}, concurrency: {config.get('llm_ocr_concurrency', 1)})")
@@ -2206,7 +2197,6 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                 _py_for_ocr, "-m", "ocrmypdf",
                 "--ocr-engine", "tesseract",
                 "--force-ocr",
-                "--jbig2-threshold", "0.9",
                 "--optimize", _opt_level,
                 "--force-ocr",
                 "--oversample", ocr_oversample,
@@ -2262,7 +2252,6 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
             cmd = [
                 _paddle_venv_py, "-m", "ocrmypdf",
                 "--plugin", "ocrmypdf_paddleocr",
-                "--jbig2-threshold", "0.9",
                 "--optimize", _opt_level,
                 "--oversample", ocr_oversample,
                 "-l", ocr_lang or "chi_sim+eng",
