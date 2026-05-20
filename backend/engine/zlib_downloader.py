@@ -351,6 +351,9 @@ class ZLibDownloader:
                 book_id = str(book.get("id", ""))
                 book_hash = book.get("hash") or book.get("book_hash") or ""
                 if book_id and book_hash and book_id not in seen:
+                    ext = book.get("extension", book.get("ext", "")).lower().lstrip('.')
+                    if ext and ext != "pdf":
+                        continue
                     seen.add(book_id)
                     book_size = int(book.get("filesize", book.get("filesize_bytes", 0)))
                     candidates.append({
@@ -374,6 +377,9 @@ class ZLibDownloader:
                 book_id = str(book.get("id", ""))
                 book_hash = book.get("hash") or book.get("book_hash") or ""
                 if book_id and book_hash and book_id not in seen:
+                    ext = book.get("extension", book.get("ext", "")).lower().lstrip('.')
+                    if ext and ext != "pdf":
+                        continue
                     seen.add(book_id)
                     book_size = int(book.get("filesize", book.get("filesize_bytes", 0)))
                     candidates.append({
@@ -396,6 +402,9 @@ class ZLibDownloader:
                 book_id = str(book.get("id", ""))
                 book_hash = book.get("hash") or book.get("book_hash") or ""
                 if book_id and book_hash and book_id not in seen:
+                    ext = book.get("extension", book.get("ext", "")).lower().lstrip('.')
+                    if ext and ext != "pdf":
+                        continue
                     seen.add(book_id)
                     book_size = int(book.get("filesize", book.get("filesize_bytes", 0)))
                     candidates.append({
@@ -446,16 +455,20 @@ class ZLibDownloader:
                     pass
                 continue
 
+            # 仅限 PDF 格式
+            if f.suffix.lower() != ".pdf":
+                logger.warning(f"ZL ignoring non-PDF: {f.name}")
+                continue
+
             # PDF 头验证
-            if f.suffix.lower() == ".pdf":
-                try:
-                    with open(f, "rb") as fh:
-                        if fh.read(4) != b"%PDF":
-                            logger.warning(f"ZL downloaded non-PDF for {book_id}, removed")
-                            f.unlink()
-                            continue
-                except OSError:
-                    continue
+            try:
+                with open(f, "rb") as fh:
+                    if fh.read(4) != b"%PDF":
+                        logger.warning(f"ZL downloaded non-PDF for {book_id}, removed")
+                        f.unlink()
+                        continue
+            except OSError:
+                continue
 
             # 文件大小验证
             if expected_size > 0:

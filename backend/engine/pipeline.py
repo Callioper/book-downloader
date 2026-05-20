@@ -939,6 +939,12 @@ async def _download_via_aa_and_stacks(
             details = details_by_md5.get(md5, {"md5": md5})
             filesize_bytes = details.get("filesize_bytes", entry.get("size_bytes", 0))
             md5_title = details.get("title", "")
+            md5_ext = details.get("extension", "")
+
+            # 仅限 PDF 格式
+            if md5_ext and md5_ext != ".pdf":
+                task_store.add_log(task_id, f"AA: MD5 {md5} extension={md5_ext} (non-PDF), skipping")
+                continue
 
             # 匹配 MD5 详情中的标题/ISBN 与 Step1 元数据
             if title or isbn:
@@ -1195,6 +1201,7 @@ async def _download_via_aa_and_stacks(
 
                         # Step 3: 心跳轮询（每3秒检测一次，直到下载完成，无限时）
                         task_store.add_log(task_id, "AA: heartbeat polling for stacks download...")
+                        start_time = time.time()
                         while True:
                             dl_info = None
                             try:
