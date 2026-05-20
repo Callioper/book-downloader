@@ -15,6 +15,7 @@ def bw_compress_pdf_blocking(
     output_path: str,
     half_res: bool = False,
     threshold: int = 128,
+    zlib_level: int = 9,
     progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> tuple[int, int]:
     """
@@ -83,7 +84,7 @@ def bw_compress_pdf_blocking(
                     bw = gray.point(lambda x: 0 if x < threshold else 255, "1")
 
                     raw_bits = bw.tobytes()
-                    compressed = zlib.compress(raw_bits, 9)
+                    compressed = zlib.compress(raw_bits, zlib_level)
 
                     new_stream = pdf.make_stream(compressed)
                     new_stream.Type = pikepdf.Name.XObject

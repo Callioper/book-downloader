@@ -325,14 +325,15 @@ def open_folder(req: OpenRequest):
 
 class NotifyRequest(BaseModel):
     task_id: str
+    action: str = "confirm"  # "confirm" or "skip"
 
 
 @router.post("/notify-done")
 def notify_toc_done(req: NotifyRequest):
-    """Called by TOCModal when user confirms bookmark injection, so pipeline can continue."""
+    """Called by TOCModal when user confirms or skips, so pipeline can continue."""
     from task_store import task_store
     t = task_store.get(req.task_id)
     if t:
-        task_store.update(req.task_id, {"_toc_done": True})
+        task_store.update(req.task_id, {"_toc_done": True, "_toc_action": req.action})
         return {"ok": True}
     return {"ok": False, "message": "task not found"}

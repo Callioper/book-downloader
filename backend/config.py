@@ -76,7 +76,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "stacks_password": "",
     "stacks_timeout": 180,
     "pdf_compress": False,
-    "pdf_compress_half": True,
+    "bw_compress_level": "balanced",  # "quality" | "balanced" | "size"
     "ai_vision_enabled": True,
     "ai_vision_endpoint": "",
     "ai_vision_model": "",

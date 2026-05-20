@@ -51,8 +51,17 @@ export default function Layout() {
 
   const closeTocModal = useCallback(() => {
     setTocPdfPath(null)
+    // Notify backend to unblock pipeline (skip/close treated as done)
+    const taskId = tocTaskId
+    if (taskId) {
+      fetch('/api/v1/toc/notify-done', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, action: 'skip' }),
+      }).catch(() => {})
+    }
     setTocTaskId('')
-  }, [])
+  }, [tocTaskId])
 
   // ── Theme ──
   const isDarkByTime = () => {

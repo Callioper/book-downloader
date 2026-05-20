@@ -439,27 +439,16 @@ function DownloadSourcesSection({ form, updateForm, mountedRef }: SectionProps) 
         <p className="text-xs text-gray-400 mt-0.5 ml-5">将彩色扫描页转为 1-bit 黑白，大幅减小体积，完整保留 OCR 文字层。</p>
         {(form as any).pdf_compress && (
           <div className="mt-2 ml-5 flex items-center gap-3">
-            <span className="text-xs text-gray-500">分辨率:</span>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="pdf_compress_half"
-                checked={!(form as any).pdf_compress_half}
-                onChange={() => updateForm({ pdf_compress_half: false } as any)}
-                className="border-gray-300"
-              />
-              <span className="text-xs text-gray-600">全分辨率 (~300 DPI)</span>
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="pdf_compress_half"
-                checked={!!(form as any).pdf_compress_half}
-                onChange={() => updateForm({ pdf_compress_half: true } as any)}
-                className="border-gray-300"
-              />
-              <span className="text-xs text-gray-600">半分辨率 (~150 DPI, 体积更小)</span>
-            </label>
+            <span className="text-xs text-gray-500">等级:</span>
+            <select
+              value={(form as any).bw_compress_level || 'balanced'}
+              onChange={(e) => updateForm({ bw_compress_level: e.target.value } as any)}
+              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+            >
+              <option value="quality">质量优先 — 全分辨率，浅二值化</option>
+              <option value="balanced">均衡 — 全分辨率，标准压缩</option>
+              <option value="size">体积优先 — 半分辨率，深二值化</option>
+            </select>
           </div>
         )}
       </div>

@@ -2824,7 +2824,22 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
         if report.get("pdf_path") and os.path.exists(report["pdf_path"]):
             task_store.add_log(task_id, "Compressing PDF (BW binarization)...")
             try:
-                half_res = config.get("pdf_compress_half", True)
+                compress_level = config.get("bw_compress_level", "balanced")
+                if compress_level == "quality":
+                    half_res = False
+                    threshold = 96
+                    zlib_level = 6
+                elif compress_level == "size":
+                    half_res = True
+                    threshold = 160
+                    zlib_level = 9
+                else:  # balanced (default)
+                    half_res = False
+                    threshold = 128
+                    zlib_level = 9
+                # Legacy: pdf_compress_half overrides half_res
+                if compress_level == "balanced" and config.get("pdf_compress_half") is not None:
+                    half_res = bool(config.get("pdf_compress_half", False))
                 output_path = report["pdf_path"] + ".bw"
 
                 loop = asyncio.get_event_loop()
@@ -2847,11 +2862,13 @@ async def _step_ocr(task_id: str, task: Dict[str, Any], config: Dict[str, Any], 
                     report["pdf_path"],
                     output_path,
                     half_res,
-                    128,
+                    threshold,
+                    zlib_level,
                     _compress_progress,
                 )
                 # Save OCR original before replacing with compressed version
-                ocr_original = report["pdf_path"] + ".ocr"
+                ocr_original = os.path.join(os.path.dirname(report["pdf_path"]),
+                                            os.path.splitext(os.path.basename(report["pdf_path"]))[0] + "_ocr_original.pdf")
                 shutil.copy2(report["pdf_path"], ocr_original)
                 report["ocr_output_file"] = ocr_original  # for OCR download link
                 task_store.add_log(task_id, f"OCR original preserved: {ocr_original}")
@@ -2961,9 +2978,13 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
                     task_store.update(task_id, {"_toc_done": False})
                     return report
                 if _t.get("_toc_done"):
-                    task_store.add_log(task_id, "智能目录已由用户确认注入")
-                    report["bookmark_applied"] = True
-                    task_store.update(task_id, {"_toc_done": False})
+                    action = _t.get("_toc_action", "confirm")
+                    if action == "confirm":
+                        task_store.add_log(task_id, "智能目录已由用户确认注入")
+                        report["bookmark_applied"] = True
+                    else:
+                        task_store.add_log(task_id, "智能目录已跳过")
+                    task_store.update(task_id, {"_toc_done": False, "_toc_action": None})
                     break
                 await asyncio.sleep(2)
             else:

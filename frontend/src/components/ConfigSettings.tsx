@@ -46,7 +46,7 @@ interface AppConfig {
   ocr_confirm_enabled: boolean
   bookmark_confirm_enabled: boolean
   pdf_compress: boolean
-  pdf_compress_half: boolean
+  bw_compress_level: string
   filename_template: string
   theme: string
   [key: string]: unknown
@@ -187,7 +187,7 @@ const DEFAULT_CONFIG: AppConfig = {
   ocr_confirm_enabled: false,
   bookmark_confirm_enabled: false,
   pdf_compress: false,
-  pdf_compress_half: true,
+  bw_compress_level: 'balanced',
   filename_template: '{title}',
 }
 
@@ -1865,17 +1865,16 @@ export default function ConfigSettings() {
               启用（OCR 后自动执行）
             </label>
             {form.pdf_compress && (
-              <div className="ml-5 mt-1 space-y-0.5">
-                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                  <input type="radio" name="compress_res" checked={!form.pdf_compress_half}
-                    onChange={() => updateForm({ pdf_compress_half: false })} />
-                  全分辨率（~300 DPI）
-                </label>
-                <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                  <input type="radio" name="compress_res" checked={!!form.pdf_compress_half}
-                    onChange={() => updateForm({ pdf_compress_half: true })} />
-                  半分辨率（~150 DPI，文件更小）
-                </label>
+              <div className="ml-5 mt-1">
+                <select
+                  value={form.bw_compress_level || 'balanced'}
+                  onChange={(e) => updateForm({ bw_compress_level: e.target.value })}
+                  className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-200"
+                >
+                  <option value="quality">质量优先 — 全分辨率，浅二值化</option>
+                  <option value="balanced">均衡 — 全分辨率，标准压缩</option>
+                  <option value="size">体积优先 — 半分辨率，深二值化</option>
+                </select>
               </div>
             )}
           </div>
