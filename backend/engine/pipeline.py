@@ -3080,7 +3080,7 @@ async def run_pipeline(task_id: str) -> None:
         _start_from = 0
         report = {}
     task_store.update(task_id, {"status": STATUS_RUNNING})
-    task_store.add_log(task_id, "PIPELINE v1.3.5-FIX: jbig2-threshold=0, title-filter, bookmark-preinject active")
+    task_store.add_log(task_id, "PIPELINE v1.3.6: compressed_path fix, OCR copy name collision fix, download endpoint fallback")
     await _emit(task_id, "task_started", {"task_id": task_id})
 
     # Log current settings at pipeline start
