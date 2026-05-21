@@ -183,7 +183,7 @@ async def open_pdf(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     report = task.get("report", {})
-    pdf_path = report.get("pdf_path", "") or report.get("output_file", "")
+    pdf_path = report.get("download_path", "") or report.get("pdf_path", "")
     if pdf_path and os.path.exists(pdf_path):
         try:
             from platform_utils import open_file

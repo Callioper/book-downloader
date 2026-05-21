@@ -336,7 +336,7 @@ export default function TaskDetailPage() {
       <div className="space-y-4 flex flex-col">
         <TaskListPanel compact />
         {task.report?.pdf_path && (
-          <PDFPreviewPanel pdfPath={task.report.pdf_path} />
+          <PDFPreviewPanel pdfPath={task.report.download_path || task.report.pdf_path} />
         )}
       </div>
     </div>
