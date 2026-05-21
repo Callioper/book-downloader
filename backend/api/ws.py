@@ -35,6 +35,15 @@ async def websocket_endpoint(websocket: WebSocket):
                             "type": "task_update",
                             "task": task,
                         })
+                        # Replay pending TOC modal if task is waiting for user confirmation
+                        toc_modal = task.get("_toc_modal")
+                        if toc_modal:
+                            await ws_manager.send_personal(client_id, {
+                                "type": "show_toc_modal",
+                                "task_id": task_id,
+                                "pdf_path": toc_modal["pdf_path"],
+                                "output_dir": toc_modal.get("output_dir", ""),
+                            })
 
             elif msg_type == "unsubscribe":
                 task_id = data.get("task_id", "")

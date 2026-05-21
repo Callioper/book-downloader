@@ -2926,8 +2926,14 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
     # ── If no bookmark from Step 2, open TOCModal for manual selection ──
     if not bookmark and pdf_path and os.path.exists(pdf_path):
         task_store.add_log(task_id, "请在弹出的智能目录窗口中手动选择目录页并确认偏移量")
-        # Initialize flag BEFORE broadcast to prevent race: frontend could set True before we init to False
-        task_store.update(task_id, {"_toc_done": False})
+        # Initialize flag BEFORE broadcast + store modal info for replay on WS reconnect
+        task_store.update(task_id, {
+            "_toc_done": False,
+            "_toc_modal": {
+                "pdf_path": preview_path,
+                "output_dir": config.get("finished_dir", "") or config.get("download_dir", ""),
+            },
+        })
         await ws_manager.broadcast_all({
             "type": "show_toc_modal",
             "task_id": task_id,
@@ -2937,22 +2943,28 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
         await _emit_progress(task_id, "bookmark", 30, "等待智能目录确认...")
 
         # Poll for user completion
-        _timeout_iters = 300  # 10 min at 2s interval
+        _timeout_iters = 150  # 5 min at 2s interval
+        toc_modal_msg = {"type": "show_toc_modal", "task_id": task_id,
+                         "pdf_path": preview_path,
+                         "output_dir": config.get("finished_dir", "") or config.get("download_dir", "")}
         for _ in range(_timeout_iters):
             _t = task_store.get(task_id)
             if not _t or _t.get("status") == STATUS_CANCELLED:
                 task_store.add_log(task_id, "Task cancelled during TOC wait")
-                task_store.update(task_id, {"_toc_done": False})
+                task_store.update(task_id, {"_toc_done": False, "_toc_modal": None})
                 return report
             if _t.get("_toc_done"):
                 task_store.add_log(task_id, "智能目录已由用户确认注入")
                 report["bookmark_applied"] = True
-                task_store.update(task_id, {"_toc_done": False})
+                task_store.update(task_id, {"_toc_done": False, "_toc_modal": None})
                 break
+            # Re-broadcast every 20s so late-connecting clients see the modal
+            if _ % 10 == 9:
+                await ws_manager.broadcast_all(toc_modal_msg)
             await asyncio.sleep(2)
         else:
             task_store.add_log(task_id, "智能目录确认超时，跳过书签注入")
-            task_store.update(task_id, {"_toc_done": False})
+            task_store.update(task_id, {"_toc_done": False, "_toc_modal": None})
 
     if bookmark and pdf_path and os.path.exists(pdf_path):
         # Auto-detect offset before deciding whether to TOC-modal
@@ -2965,7 +2977,13 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
         # If offset=0 (auto-detection failed), show TOC modal for manual adjustment
         if detected_offset == 0 and not task.get("bookmark"):
             task_store.add_log(task_id, "Bookmark offset=0, 弹出智能目录窗口供手动调整...")
-            task_store.update(task_id, {"_toc_done": False})
+            task_store.update(task_id, {
+                "_toc_done": False,
+                "_toc_modal": {
+                    "pdf_path": preview_path,
+                    "output_dir": config.get("finished_dir", "") or config.get("download_dir", ""),
+                },
+            })
             await ws_manager.broadcast_all({
                 "type": "show_toc_modal",
                 "task_id": task_id,
@@ -2974,12 +2992,15 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
             })
             await _emit_progress(task_id, "bookmark", 30, "等待智能目录确认...")
 
-            _timeout_iters = 300
+            _timeout_iters = 150  # 5 min at 2s interval
+            toc_modal_msg = {"type": "show_toc_modal", "task_id": task_id,
+                             "pdf_path": preview_path,
+                             "output_dir": config.get("finished_dir", "") or config.get("download_dir", "")}
             for _ in range(_timeout_iters):
                 _t = task_store.get(task_id)
                 if not _t or _t.get("status") == STATUS_CANCELLED:
                     task_store.add_log(task_id, "Task cancelled during TOC wait")
-                    task_store.update(task_id, {"_toc_done": False})
+                    task_store.update(task_id, {"_toc_done": False, "_toc_modal": None})
                     return report
                 if _t.get("_toc_done"):
                     action = _t.get("_toc_action", "confirm")
@@ -2988,12 +3009,16 @@ async def _step_bookmark(task_id: str, task: Dict[str, Any], config: Dict[str, A
                         report["bookmark_applied"] = True
                     else:
                         task_store.add_log(task_id, "智能目录已跳过")
-                    task_store.update(task_id, {"_toc_done": False, "_toc_action": None})
+                    task_store.update(task_id, {"_toc_done": False, "_toc_action": None, "_toc_modal": None})
                     break
+                # Re-broadcast every 20s so late-connecting clients see the modal
+                if _ % 10 == 9:
+                    await ws_manager.broadcast_all(toc_modal_msg)
                 await asyncio.sleep(2)
             else:
                 task_store.add_log(task_id, "智能目录确认超时，跳过书签注入")
-                task_store.update(task_id, {"_toc_done": False})
+                task_store.update(task_id, {"_toc_done": False, "_toc_modal": None})
+                bookmark = ""  # prevent fall-through injection with wrong offset=0
         elif report.get("bookmark_applied") and not task.get("bookmark"):
             task_store.add_log(task_id, "Bookmark already injected before OCR, skipping")
         else:
